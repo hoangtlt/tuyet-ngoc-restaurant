@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard | Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link th:href="@{/css/admin.css}" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px solid #f1f5f9;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .stat-info h3 {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-info .value {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #1e293b;
+        }
+
+        .stat-info .sub-value {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+
+        .chart-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px solid #f1f5f9;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .chart-header h2 {
+            font-size: 1.1rem;
+            font-weight: 800;
+        }
+
+        .top-list {
+            list-style: none;
+        }
+
+        .top-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f8fafc;
+        }
+
+        .top-item:last-child {
+            border-bottom: none;
+        }
+
+        .top-rank {
+            width: 24px;
+            height: 24px;
+            background: #f1f5f9;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .top-name {
+            flex: 1;
+            margin-left: 15px;
+            font-weight: 600;
+        }
+
+        .top-qty {
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .payment-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #f8fafc;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragment/frag :: sidebar(${mode}, 'dashboard')}"></div>
+
+    <div class="main-content">
+        <div class="page-header" style="align-items: flex-end; gap: 20px; flex-wrap: wrap;">
+            <div class="page-title">
+                <h1>Tổng quan Dashboard</h1>
+                <p>Chào mừng quay lại, đây là hiệu quả kinh doanh của quán.</p>
+            </div>
+            
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: nowrap;">
+                <!-- Excel Export Options -->
+                <div class="dropdown" style="position: relative;">
+                    <button class="btn" style="background: #10b981; color: white; border-radius: 12px; padding: 8px 12px; font-size: 0.9rem; white-space: nowrap;" onclick="toggleExportMenu()">
+                        <i class="bi bi-file-earmark-excel"></i> Xuất Excel <i class="bi bi-chevron-down" style="font-size: 0.7rem;"></i>
+                    </button>
+                    <div id="exportMenu" style="display: none; position: absolute; top: 100%; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 100; min-width: 200px; margin-top: 5px; padding: 5px;">
+                        <a href="javascript:void(0)" onclick="exportExcel('MONTH')" style="display: block; padding: 10px 15px; color: #1e293b; text-decoration: none; border-radius: 8px; font-size: 0.9rem;">
+                            <i class="bi bi-calendar-month"></i> Doanh thu tháng hiện tại
+                        </a>
+                        <a href="javascript:void(0)" onclick="exportExcel('YEAR')" style="display: block; padding: 10px 15px; color: #1e293b; text-decoration: none; border-radius: 8px; font-size: 0.9rem;">
+                            <i class="bi bi-calendar-check"></i> Doanh thu năm hiện tại
+                        </a>
+                        <a th:href="@{/management/dashboard/export(type='TOTAL')}" style="display: block; padding: 10px 15px; color: #1e293b; text-decoration: none; border-radius: 8px; font-size: 0.9rem; border-top: 1px solid #f1f5f9;">
+                            <i class="bi bi-database"></i> Tổng doanh thu
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Bộ lọc Tháng/Năm mở rộng -->
+                <div th:if="${currentPeriod == 'MONTH' || currentPeriod == 'YEAR' || currentPeriod == 'DAY'}" 
+                     style="display: flex; gap: 5px; background: white; padding: 5px 10px; border-radius: 12px; border: 1px solid #e2e8f0; align-items: center; white-space: nowrap;">
+                    
+                    <span style="font-size: 0.8rem; font-weight: 600; color: #64748b;" class="desktop-only">Lọc:</span>
+                    
+                    <input th:if="${currentPeriod == 'DAY'}" type="date" id="dateSelect" class="form-control" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 0.85rem; width: auto;" onchange="updateFilter()" th:value="${selectedDate}">
+
+                    <select th:if="${currentPeriod == 'MONTH'}" id="monthSelect" class="form-select" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 0.85rem;" onchange="updateFilter()">
+                        <option th:each="m : ${#numbers.sequence(1, 12)}" 
+                                th:value="${m}" th:text="'Th' + ${m}"
+                                th:selected="${m == selectedMonth}"></option>
+                    </select>
+
+                    <select id="yearSelect" class="form-select" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 0.85rem;" onchange="updateFilter()">
+                        <option th:each="y : ${#numbers.sequence(2023, 2026)}" 
+                                th:value="${y}" th:text="${y}"
+                                th:selected="${y == selectedYear}"></option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 4px; background: white; padding: 4px; border-radius: 12px; border: 1px solid #e2e8f0; white-space: nowrap;">
+                    <a th:href="@{/management/dashboard(period='DAY')}" class="btn"
+                        th:style="${currentPeriod == 'DAY' ? 'background: var(--primary); color: white; padding: 5px 12px; font-size: 0.85rem;' : 'background: transparent; color: #64748b; padding: 5px 12px; border: none; font-size: 0.85rem;'}">Ngày</a>
+                    <a th:href="@{/management/dashboard(period='WEEK')}" class="btn"
+                        th:style="${currentPeriod == 'WEEK' ? 'background: var(--primary); color: white; padding: 5px 12px; font-size: 0.85rem;' : 'background: transparent; color: #64748b; padding: 5px 12px; border: none; font-size: 0.85rem;'}">Tuần</a>
+                    <a th:href="@{/management/dashboard(period='MONTH')}" class="btn"
+                        th:style="${currentPeriod == 'MONTH' ? 'background: var(--primary); color: white; padding: 5px 12px; font-size: 0.85rem;' : 'background: transparent; color: #64748b; padding: 5px 12px; border: none; font-size: 0.85rem;'}">Tháng</a>
+                    <a th:href="@{/management/dashboard(period='YEAR')}" class="btn"
+                        th:style="${currentPeriod == 'YEAR' ? 'background: var(--primary); color: white; padding: 5px 12px; font-size: 0.85rem;' : 'background: transparent; color: #64748b; padding: 5px 12px; border: none; font-size: 0.85rem;'}">Năm</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. Widgets Tổng quan -->
+        <div class="dashboard-grid">
+            <!-- Doanh thu kỳ này -->
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #ecfdf5; color: #059669;"><i
+                        class="bi bi-currency-dollar"></i></div>
+                <div class="stat-info">
+                    <h3
+                        th:text="${'Doanh thu ' + (currentPeriod == 'DAY' ? 'Ngày' : (currentPeriod == 'WEEK' ? '7 ngày' : (currentPeriod == 'MONTH' ? 'Tháng' : 'Năm')))}">
+                        Doanh thu</h3>
+                    <div class="value"
+                        th:text="${#numbers.formatDecimal(revenuePeriod, 0, 'COMMA', 0, 'POINT') + ' đ'}">0 đ</div>
+                    <div class="sub-value" th:if="${currentPeriod == 'DAY'}">Hôm trước: <span
+                            th:text="${#numbers.formatDecimal(revenueYesterday, 0, 'COMMA', 0, 'POINT')}"></span> đ
+                    </div>
+                    <div class="sub-value" th:if="${currentPeriod != 'DAY'}">Đang xem theo <span
+                            th:text="${currentPeriod}"></span></div>
+                </div>
+            </div>
+
+            <!-- Tổng đơn hàng kỳ này -->
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #eff6ff; color: #2563eb;"><i class="bi bi-receipt"></i></div>
+                <div class="stat-info">
+                    <h3>Số đơn hàng</h3>
+                    <div class="value" th:text="${orderCountPeriod}">0</div>
+                    <div class="sub-value">
+                        Tại bàn: <span th:text="${dineInCount}">0</span> | Mang về: <span
+                            th:text="${takeAwayCount}">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Giá trị trung bình đơn (AOV) kỳ này -->
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #fef2f2; color: #dc2626;"><i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>Trung bình đơn (AOV)</h3>
+                    <div class="value" th:text="${#numbers.formatDecimal(aovPeriod, 0, 'COMMA', 0, 'POINT') + ' đ'}">0 đ
+                    </div>
+                    <div class="sub-value">Suất ăn trung bình của khách</div>
+                </div>
+            </div>
+
+            <!-- Đơn chưa xong -->
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #fffbeb; color: #d97706;"><i
+                        class="bi bi-hourglass-split"></i></div>
+                <div class="stat-info">
+                    <h3>Đang phục vụ</h3>
+                    <div class="value" th:text="${pendingOrders}">0</div>
+                    <div class="sub-value">Tổng đơn chưa thanh toán</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-row">
+            <!-- Biểu đồ doanh thu chính -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h2><i class="bi bi-bar-chart-line"></i> <span th:text="${chartTitle}">Biểu đồ doanh thu</span></h2>
+                </div>
+                <div style="position: relative; height: 320px;">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Top món bán chạy -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h2><i class="bi bi-fire"></i> Top 5 bán chạy kỳ này</h2>
+                </div>
+                <ul class="top-list">
+                    <li th:each="entry, iter : ${topProducts}" class="top-item">
+                        <div class="top-rank" th:text="${iter.count}">1</div>
+                        <div class="top-name" th:text="${entry.key}">Tên món</div>
+                        <div class="top-qty" th:text="${entry.value + ' suất'}">0</div>
+                    </li>
+                    <li th:if="${topProducts.empty}" class="top-item"
+                        style="color: #94a3b8; font-style: italic; justify-content: center; padding-top: 50px;">
+                        Chưa có dữ liệu bán hàng
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="chart-row" style="grid-template-columns: 1fr 1.5fr; margin-top: 20px;">
+            <!-- Thống kê thanh toán -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h2><i class="bi bi-wallet2"></i> Phương thức thanh toán kỳ này</h2>
+                </div>
+                <div style="display: flex; gap: 20px; align-items: center; justify-content: center;">
+                    <div style="position: relative; height: 140px; width: 140px;">
+                        <canvas id="paymentChart"></canvas>
+                    </div>
+                    <div style="flex: 1;">
+                        <div class="payment-pill">
+                            <i class="bi bi-cash-stack" style="color: #059669;"></i>
+                            <div style="flex: 1;">
+                                <div style="font-size: 0.8rem; color: #64748b;">Tiền mặt</div>
+                                <div style="font-weight: 800;" th:text="${cashCount + ' đơn'}">0 đơn</div>
+                            </div>
+                        </div>
+                        <div class="payment-pill">
+                            <i class="bi bi-credit-card" style="color: #2563eb;"></i>
+                            <div style="flex: 1;">
+                                <div style="font-size: 0.8rem; color: #64748b;">Chuyển khoản</div>
+                                <div style="font-weight: 800;" th:text="${bankCount + ' đơn'}">0 đơn</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Khoảng trống hoặc thêm info khác? Giữ trống cho đẹp layout grid -->
+            <div
+                style="padding: 24px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border-radius: 16px; border: 1px dashed #e2e8f0; color: #94a3b8; font-style: italic;">
+                Dữ liệu báo cáo được cập nhật theo thời gian thực
+            </div>
+        </div>
+    </div>
+
+    <!-- Script dữ liệu cho biểu đồ -->
+    <script th:inline="javascript">
+        const currentPeriod = /*[[${currentPeriod}]]*/ 'DAY';
+
+        function toggleExportMenu() {
+            const menu = document.getElementById('exportMenu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Close dropdown when clicking outside
+        window.onclick = function(event) {
+            if (!event.target.matches('.bi-file-earmark-excel') && !event.target.closest('.dropdown')) {
+                const menu = document.getElementById('exportMenu');
+                if (menu) menu.style.display = 'none';
+            }
+        }
+
+        function exportExcel(type) {
+            const year = document.getElementById('yearSelect') ? document.getElementById('yearSelect').value : '';
+            const month = document.getElementById('monthSelect') ? document.getElementById('monthSelect').value : '';
+            
+            let url = '/management/dashboard/export?type=' + type;
+            if (year) url += '&year=' + year;
+            if (month) url += '&month=' + month;
+            
+            window.location.href = url;
+        }
+
+        function updateFilter() {
+            const yearSelect = document.getElementById('yearSelect');
+            const monthSelect = document.getElementById('monthSelect');
+            const dateSelect = document.getElementById('dateSelect');
+            
+            const year = yearSelect ? yearSelect.value : '';
+            const month = monthSelect ? monthSelect.value : '';
+            const date = dateSelect ? dateSelect.value : '';
+            
+            let url = '/management/dashboard?period=' + currentPeriod;
+            if (year) url += '&year=' + year;
+            if (month) url += '&month=' + month;
+            if (date) url += '&date=' + date;
+            
+            window.location.href = url;
+        }
+
+        // 1. Biểu đồ chính (Thay đổi theo Period)
+        const labels = /*[[${chartLabels}]]*/[];
+        const values = /*[[${chartValues}]]*/[];
+
+        new Chart(document.getElementById('mainChart'), {
+            type: currentPeriod === 'YEAR' || currentPeriod === 'WEEK' || currentPeriod === 'MONTH' ? 'bar' : 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Doanh thu (đ)',
+                    data: values,
+                    borderColor: '#f97316',
+                    backgroundColor: currentPeriod === 'DAY' ? 'rgba(249, 115, 22, 0.1)' : '#3b82f6',
+                    fill: true,
+                    tension: 0.4,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { borderDash: [5, 5] } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // 2. Biểu đồ thanh toán
+        const cashCount = /*[[${cashCount}]]*/ 0;
+        const bankCount = /*[[${bankCount}]]*/ 0;
+
+        new Chart(document.getElementById('paymentChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Tiền mặt', 'Chuyển khoản'],
+                datasets: [{
+                    data: [cashCount, bankCount],
+                    backgroundColor: ['#10b981', '#3b82f6'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                cutout: '70%'
+            }
+        });
+    </script>
+</body>
+
+</html>

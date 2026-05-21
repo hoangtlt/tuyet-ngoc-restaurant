@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Dọn dẹp dữ liệu | Hệ thống Quản trị</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link th:href="@{/css/admin.css}" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .purge-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .purge-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .option-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .purge-option {
+            border: 2px solid #f1f5f9;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .purge-option:hover {
+            border-color: var(--primary);
+            background: #f8fafc;
+            transform: translateY(-5px);
+        }
+
+        .purge-option i {
+            font-size: 2rem;
+            color: #64748b;
+        }
+
+        .purge-option.danger:hover {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .purge-option.danger:hover i {
+            color: #ef4444;
+        }
+
+        .date-input-group {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragment/frag :: sidebar(${mode}, 'maintenance')}"></div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <div class="page-title">
+                <h1>Hệ thống & Bảo trì</h1>
+                <p>Quản lý dữ liệu lịch sử để tối ưu hóa hiệu suất máy chủ.</p>
+            </div>
+        </div>
+
+        <div class="purge-container">
+            <div class="purge-card">
+                <h3 style="margin-bottom: 20px;"><i class="bi bi-trash3 text-danger"></i> Dọn dẹp lịch sử đơn hàng</h3>
+                <p style="color: #64748b; font-size: 0.95rem;">Chọn mốc thời gian bạn muốn xóa. Tất cả đơn hàng (bao gồm
+                    cả hóa đơn liên quan) được tạo <b>TRƯỚC</b> mốc thời gian này sẽ được xóa vĩnh viễn.</p>
+
+                <div class="option-grid">
+                    <div class="purge-option danger" onclick="confirmPurge('ALL', 'Xóa TOÀN BỘ đơn hàng đến hiện tại')">
+                        <i class="bi bi-trash-fill"></i>
+                        <span style="font-weight: 600;">Dọn dẹp TOÀN BỘ</span>
+                    </div>
+                    <div class="purge-option danger" onclick="confirmPurge('WEEK', 'Xóa đơn hàng cũ hơn 1 tuần')">
+                        <i class="bi bi-calendar-event"></i>
+                        <span style="font-weight: 600;">Cũ hơn 1 tuần</span>
+                    </div>
+                    <div class="purge-option danger" onclick="confirmPurge('MONTH', 'Xóa đơn hàng cũ hơn 1 tháng')">
+                        <i class="bi bi-calendar-month"></i>
+                        <span style="font-weight: 600;">Cũ hơn 1 tháng</span>
+                    </div>
+                    <div class="purge-option danger" onclick="confirmPurge('YEAR', 'Xóa đơn hàng cũ hơn 1 năm')">
+                        <i class="bi bi-calendar-range"></i>
+                        <span style="font-weight: 600;">Cũ hơn 1 năm</span>
+                    </div>
+                    <div class="purge-option" onclick="toggleDateInput()">
+                        <i class="bi bi-calendar-check"></i>
+                        <span style="font-weight: 600;">Chọn ngày cụ thể</span>
+                    </div>
+                </div>
+
+                <div id="dateInputGroup" class="date-input-group">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 600;">Xóa tất cả đơn hàng trước
+                        ngày:</label>
+                    <div style="display: flex; gap: 15px;">
+                        <input type="date" id="purgeDate" class="form-control" style="flex: 1;">
+                        <button class="btn btn-primary" style="background: #ef4444;" onclick="executeDatePurge()">XÁC
+                            NHẬN XÓA</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="purge-card" style="border-left: 5px solid #f59e0b;">
+                <h3 style="margin-bottom: 15px;"><i class="bi bi-exclamation-triangle-fill text-warning"></i> Lưu ý quan
+                    trọng</h3>
+                <ul style="color: #475569; line-height: 1.8; font-size: 0.9rem;">
+                    <li>Hành động này <b>không thể hoàn tác</b>. Dữ liệu đã xóa sẽ biến mất vĩnh viễn khỏi hệ thống.
+                    </li>
+                    <li>Chỉ nên xóa dữ liệu khi cơ sở dữ liệu quá nặng hoặc định kỳ hàng năm/quý.</li>
+                    <li>Các đơn hàng đang ở trạng thái <b>PENDING (Đang chờ)</b> cũng sẽ bị xóa nếu ngày tạo nằm trong
+                        khoảng thời gian chọn.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Forms -->
+    <form id="purgeForm" th:action="@{/admin/maintenance/purge}" method="post" style="display: none;">
+        <input type="hidden" name="type" id="purgeType">
+        <input type="hidden" name="date" id="purgeDateValue">
+    </form>
+
+    <script th:inline="javascript">
+        function toggleDateInput() {
+            const group = document.getElementById('dateInputGroup');
+            group.style.display = group.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function confirmPurge(type, title) {
+            Swal.fire({
+                title: title + '?',
+                text: "Toàn bộ dữ liệu đơn hàng và hóa đơn trước thời điểm này sẽ bị xóa sạch!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#1e293b',
+                confirmButtonText: 'Đồng ý xóa',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('purgeType').value = type;
+                    document.getElementById('purgeForm').submit();
+                }
+            })
+        }
+
+        function executeDatePurge() {
+            const date = document.getElementById('purgeDate').value;
+            if (!date) {
+                Swal.fire('Lỗi', 'Vui lòng chọn ngày!', 'error');
+                return;
+            }
+            document.getElementById('purgeDateValue').value = date;
+            confirmPurge('DATE', 'Xóa đơn hàng trước ngày ' + date);
+        }
+
+        // Show result alerts
+        document.addEventListener('DOMContentLoaded', function () {
+            const error = /*[[${error}]]*/ null;
+            const success = /*[[${success}]]*/ null;
+            if (error) Swal.fire('Lỗi', error, 'error');
+            if (success) Swal.fire('Thành công', success, 'success');
+        });
+    </script>
+</body>
+
+</html>

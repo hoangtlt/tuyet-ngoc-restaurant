@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cài đặt hệ thống | Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link th:href="@{/css/admin.css}" rel="stylesheet">
+</head>
+
+<body>
+    <div th:replace="~{fragment/frag :: sidebar('ADMIN_MAIN', 'settings')}"></div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <div class="page-title">
+                <h1>Cài đặt Hệ thống</h1>
+                <p>Quản lý tên quán, địa chỉ và các thông số hiển thị trên hóa đơn.</p>
+            </div>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success"
+            style="margin-bottom: 20px; padding: 12px 20px; background: #ecfdf5; color: #059669; border-radius: 8px; border: 1px solid #10b981;">
+            <i class="bi bi-check-circle"></i> <span th:text="${successMessage}"></span>
+        </div>
+
+        <div class="content-card" style="max-width: 800px;">
+            <form th:action="@{/admin/settings/save}" th:object="${settings}" method="post">
+                <input type="hidden" th:field="*{id}">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label>Tên nhà hàng / Quán ăn</label>
+                        <input type="text" th:field="*{restaurantName}" placeholder="Nhập tên quán..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Số điện thoại liên hệ</label>
+                        <input type="text" th:field="*{phone}" placeholder="Nhập số điện thoại...">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Địa chỉ</label>
+                    <input type="text" th:field="*{address}" placeholder="Nhập địa chỉ quán...">
+                </div>
+
+                <div class="form-group">
+                    <label>Lời chào chân hóa đơn</label>
+                    <textarea th:field="*{footerMessage}" rows="3" placeholder="Nhập lời chào..."
+                        style="width:100%; padding:10px; border-radius:8px; border:1px solid #e2e8f0; font-family: inherit;"></textarea>
+                </div>
+
+                <hr style="margin: 20px 0; border: none; border-top: 1px solid #e2e8f0;">
+
+                <h3 style="margin-bottom: 15px; font-size: 1.1rem; color: var(--dark);">Cấu hình Thanh toán (VAT / Giảm giá)</h3>
+                <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 15px;">Hệ thống sẽ tự động tính toán trên Tổng phụ của hóa đơn.</p>
+                <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;">
+                    <!-- VAT -->
+                    <div style="display: flex; align-items: center; gap: 20px;">
+                        <div style="display: flex; align-items: center; gap: 8px; width: 180px;">
+                            <input type="checkbox" th:field="*{enableVat}" id="enableVat"
+                                style="width: 18px; height: 18px;" onchange="if(this.checked) document.getElementById('enableDiscount').checked = false;">
+                            <label for="enableVat" style="margin: 0; cursor: pointer; font-weight: 600;">Áp dụng thuế VAT</label>
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <input type="number" step="0.1" th:field="*{vatPercentage}" style="width: 80px;" min="0">
+                                <span>% (Cộng thêm)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Discount -->
+                    <div style="display: flex; align-items: center; gap: 20px;">
+                        <div style="display: flex; align-items: center; gap: 8px; width: 180px;">
+                            <input type="checkbox" th:field="*{enableDiscount}" id="enableDiscount"
+                                style="width: 18px; height: 18px;" onchange="if(this.checked) document.getElementById('enableVat').checked = false;">
+                            <label for="enableDiscount" style="margin: 0; cursor: pointer; font-weight: 600;">Áp dụng Giảm giá</label>
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <input type="number" step="0.1" th:field="*{discountPercentage}" style="width: 80px;" min="0">
+                                <span>% (Trừ đi)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" style="padding: 10px 25px;">
+                        <i class="bi bi-save"></i> Lưu cài đặt
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truy cập bị từ chối | Gia Đình Quán</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+    <link th:href="@{/css/error.css}" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="icon">⚠️</div>
+        <h1>Truy cập bị từ chối</h1>
+        <p th:text="${message}"></p>
+        <a th:href="@{/}" class="btn">Quay lại trang chủ</a>
+    </div>
+</body>
+</html>

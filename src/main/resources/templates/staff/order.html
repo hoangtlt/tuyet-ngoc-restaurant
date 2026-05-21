@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title th:text="'Gọi món | Bàn ' + ${table.tableNumber}">Gọi món</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link th:href="@{/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/mobile.css}" rel="stylesheet">
+    <meta name="_csrf"        th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <style>
+        /* ── Desktop layout (unchanged) ────────────────── */
+        .order-layout {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 25px;
+            height: calc(100vh - 100px);
+        }
+        .product-section { overflow-y: auto; padding-right: 15px; }
+        .cart-section {
+            background: white; border-radius: 20px;
+            display: flex; flex-direction: column;
+            box-shadow: 0 4px 6px rgba(0,0,0,.05);
+        }
+        .cat-tabs {
+            display: flex; gap: 10px;
+            margin-bottom: 25px; overflow-x: auto; padding-bottom: 5px;
+        }
+        .cat-tab {
+            padding: 8px 20px; background: #fff; border-radius: 30px;
+            cursor: pointer; white-space: nowrap;
+            border: 1px solid #e2e8f0; font-weight: 600;
+        }
+        .cat-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .prod-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        .prod-card {
+            background: white; border-radius: 12px; overflow: hidden;
+            cursor: pointer; border: 1px solid #f1f5f9; transition: 0.2s; position: relative;
+            display: flex; align-items: center; justify-content: space-between; padding: 12px 15px;
+        }
+        .prod-card:hover { transform: scale(1.01); border-color: var(--primary); }
+        .prod-info { text-align: left; flex: 1; }
+        .prod-name { font-weight: 700; font-size: 1rem; color: #1e293b; margin-bottom: 3px; }
+        .prod-price { color: var(--primary); font-weight: 800; font-size: 0.95rem; }
+        .cart-header { padding: 20px; border-bottom: 1px solid #f1f5f9; }
+        .cart-items { flex: 1; overflow-y: auto; padding: 20px; }
+        .cart-item { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; }
+        .cart-item-info { flex: 1; }
+        .cart-footer {
+            padding: 20px; background: #f8fafc;
+            border-top: 1px solid #f1f5f9;
+            border-radius: 0 0 20px 20px;
+        }
+        .quantity-control { display: flex; align-items: center; gap: 10px; }
+        .btn-qty {
+            width: 28px; height: 28px; border-radius: 50%;
+            border: none; background: #e2e8f0; cursor: pointer;
+        }
+        /* Bill preview */
+        .bill-preview {
+            font-family: 'Courier New', Courier, monospace;
+            width: 300px; margin: 0 auto; padding: 20px;
+            background: white; color: #000; line-height: 1.4; font-size: 13px;
+        }
+        /* Mobile cart toggle hidden on desktop */
+        .mobile-cart-toggle { display: none; }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragment/frag :: sidebar(${mode}, 'home')}"></div>
+    <div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+
+    <!-- ╔══════════════════════╗
+         ║  MOBILE TOP BAR      ║
+         ╚══════════════════════╝ -->
+    <div class="mobile-topbar mobile-only">
+        <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Mở menu">
+            <i class="bi bi-list"></i>
+        </button>
+        <span class="brand" style="font-size:0.95rem;"
+              th:text="'Bàn ' + ${table.tableNumber} + ' — ' + ${table.area.name}">Gọi món</span>
+        <div class="topbar-right">
+            <a th:href="${order == null ? '/' : '/order/back/' + table.id + '/' + order.id}"
+               style="background:rgba(255,255,255,.12); border:none; color:white;
+                      padding:6px 10px; border-radius:8px; cursor:pointer;
+                      font-size:0.8rem; font-weight:700; text-decoration:none;
+                      display:flex; align-items:center; gap:4px;">
+                <i class="bi bi-chevron-left"></i> Về
+            </a>
+        </div>
+    </div>
+
+    <div class="main-content">
+
+        <!-- ── Desktop page header ────────────────────── -->
+        <div class="page-header order-page-header desktop-only" style="margin-bottom:20px;">
+            <div class="page-title">
+                <h1>Bàn <span th:text="${table.tableNumber}"></span> - Gọi món</h1>
+                <p>Khu vực: <span th:text="${table.area.name}"></span> |
+                   Nhân viên: <span th:text="${currentStaff?.fullName}"></span></p>
+            </div>
+            <a th:href="${order == null ? '/' : '/order/back/' + table.id + '/' + order.id}"
+               class="btn btn-back" style="background:#f1f5f9;">
+                <i class="bi bi-chevron-left"></i> Quay lại
+            </a>
+        </div>
+
+        <div class="order-layout">
+            <!-- ════════════════════════════════════════════
+                 PHẦN CHỌN MÓN
+                 ════════════════════════════════════════════ -->
+            <div class="product-section">
+
+                <!-- Search + categories row -->
+                <div class="search-row" style="margin-bottom:1rem;">
+                    <!-- Category tabs (always visible, scrollable) -->
+                    <div class="cat-tabs" style="margin-bottom:0; flex:1;">
+                        <div class="cat-tab active" onclick="filterByCategory(0,this)">Tất cả</div>
+                        <div th:each="c : ${categories}" class="cat-tab"
+                             th:text="${c.name}"
+                             th:onclick="'filterByCategory(' + ${c.id} + ', this)'"></div>
+                    </div>
+                    <!-- Search box -->
+                    <div class="search-box" style="position:relative; width:300px;">
+                        <i class="bi bi-search"
+                           style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8;"></i>
+                        <input type="text" id="productSearch" placeholder="Tìm tên món ăn..."
+                               style="width:100%; padding:10px 10px 10px 35px; border-radius:30px;
+                                      border:1px solid #e2e8f0; outline:none;"
+                               onkeyup="filterProducts()">
+                    </div>
+                </div>
+
+                <!-- Product grid -->
+                <div id="productContainer">
+                    <div class="prod-grid" id="productGrid">
+                        <div th:each="p : ${products}" class="prod-card"
+                             th:data-category-id="${p.category.id}"
+                             th:data-product-name-lower="${p.name.toLowerCase()}"
+                             th:data-id="${p.id}" th:data-name="${p.name}"
+                             th:data-available="${p.isAvailable}" th:data-price="${p.price}"
+                             th:data-variants="${#strings.listJoin(p.variants.![id + ':' + price + ':' + (name ?: '')], '|')}"
+                             th:style="${!p.isAvailable ? 'opacity:0.5; filter:grayscale(1); cursor:not-allowed; position:relative;' : ''}"
+                             onclick="handleItemClick(this)">
+
+                            <!-- Out-of-stock label -->
+                            <div th:if="${!p.isAvailable}"
+                                 style="position:absolute; top:50%; left:50%;
+                                        transform:translate(-50%,-50%);
+                                        background:rgba(0,0,0,.7); color:white;
+                                        padding:5px 10px; border-radius:4px;
+                                        font-weight:800; z-index:2;
+                                        font-size:0.78rem; width:80%; text-align:center;">
+                                HẾT HÀNG
+                            </div>
+
+                            <div class="prod-info">
+                                <div class="prod-name" th:text="${p.name}">Tên món</div>
+                                <div class="prod-price"
+                                     th:text="${#numbers.formatDecimal(p.price,0,'COMMA',0,'POINT')} + ' đ'"></div>
+                            </div>
+                            <div style="font-size: 1.2rem; color: #cbd5e1;">
+                                <i class="bi bi-plus-circle-fill"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ════════════════════════════════════════════
+                 GIỎ HÀNG / CART SECTION
+                 ════════════════════════════════════════════ -->
+            <div class="cart-section">
+                <!-- Drag handle (mobile) -->
+                <div class="cart-drag-handle mobile-only" onclick="toggleCart()"></div>
+
+                <div class="cart-header">
+                    <h3 style="margin:0; font-size:1.1rem;">
+                        <i class="bi bi-receipt"></i> Hóa đơn chi tiết
+                    </h3>
+                </div>
+
+                <div class="cart-items">
+                    <div th:if="${order == null || #lists.isEmpty(order.items)}"
+                         style="text-align:center; color:#94a3b8; padding-top:50px;">
+                        <i class="bi bi-cart-x" style="font-size:2.5rem;"></i>
+                        <p style="margin-top:0.75rem;">Chưa có món nào được chọn</p>
+                    </div>
+
+                    <div th:each="item : ${order?.items}" class="cart-item"
+                         th:data-item-name="${item.product.name + (item.variantName != null ? ' (' + item.variantName + ')' : '')}"
+                         th:data-item-qty="${item.quantity}"
+                         th:data-item-price="${item.price}"
+                         th:data-item-subtotal="${item.subTotal}"
+                         th:data-item-note="${item.note}"
+                         style="border-bottom:1px dashed #e2e8f0; padding-bottom:15px;">
+                        <div class="cart-item-info">
+                            <div style="font-weight:700; font-size:0.95rem;">
+                                <span th:text="${item.product.name}"></span>
+                                <small th:if="${item.variantName != null}"
+                                       style="color:var(--primary); font-weight:600;"
+                                       th:text="' (' + ${item.variantName} + ')'"></small>
+                                <span th:if="${!item.printed}" style="background-color: #ef4444; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 5px; vertical-align: middle;">MỚI</span>
+                            </div>
+                            <div style="font-size:0.8rem; color:#64748b;">
+                                <div class="quantity-control" style="margin:5px 0;">
+                                    <a href="javascript:void(0)"
+                                       th:attr="onclick='handleAction(\'/order/update-qty/' + ${table.id} + '/' + ${order.id} + '/' + ${item.id} + '/-1\')'"
+                                       style="text-decoration:none; color:#1e293b; background:#e2e8f0;
+                                              width:30px; height:30px; display:inline-flex;
+                                              align-items:center; justify-content:center;
+                                              border-radius:50%; font-weight:bold; font-size:1.1rem;">−</a>
+                                    <input type="number" min="0" style="font-weight:700; width:45px; text-align:center; border:1px solid #cbd5e1; border-radius:6px; height:30px; margin:0 5px;"
+                                           th:value="${item.quantity}"
+                                           th:onchange="'updateExactQty(' + ${table.id} + ',' + ${order.id} + ',' + ${item.id} + ', this.value, ' + ${item.quantity} + ')'" />
+                                    <a href="javascript:void(0)"
+                                       th:attr="onclick='handleAction(\'/order/update-qty/' + ${table.id} + '/' + ${order.id} + '/' + ${item.id} + '/1\')'"
+                                       style="text-decoration:none; color:white; background:var(--primary);
+                                              width:30px; height:30px; display:inline-flex;
+                                              align-items:center; justify-content:center;
+                                              border-radius:50%; font-weight:bold; font-size:1.1rem;">+</a>
+                                </div>
+                                <span th:text="${#numbers.formatDecimal(item.price,0,'COMMA',0,'POINT')}"></span> đ/món
+                            </div>
+                            <div th:if="${item.note != null && !item.note.isEmpty()}"
+                                 style="font-size:0.75rem; color:#f59e0b; font-style:italic;">
+                                <i class="bi bi-sticky"></i> <span th:text="${item.note}"></span>
+                            </div>
+                            <a href="javascript:void(0)"
+                               th:attr="onclick='editNote(' + ${order.id} + ',' + ${item.product.id} + ',\'' + ${item.variantName ?: ''} + '\',\'' + ${item.product.name} + '\',\'' + ${item.note ?: ''} + '\')'"
+                               style="font-size:0.7rem; color:#94a3b8; text-decoration:none;">
+                                <i class="bi bi-pencil-square"></i> Sửa ghi chú
+                            </a>
+                        </div>
+                        <div style="text-align:right; flex-shrink:0;">
+                            <div style="font-weight:700; color:#1e293b;"
+                                 th:text="${#numbers.formatDecimal(item.subTotal,0,'COMMA',0,'POINT')} + ' đ'"></div>
+                            <a href="javascript:void(0)"
+                               th:attr="onclick='handleAction(\'/order/remove-item/' + ${table.id} + '/' + ${order.id} + '/' + ${item.id} + '\')'"
+                               style="color:#cbd5e1; font-size:1.1rem;">
+                                <i class="bi bi-x-circle"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cart footer -->
+                <div class="cart-footer" th:if="${order != null}">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                        <span style="font-weight:600; color:#64748b;">Tổng cộng</span>
+                        <span style="font-size:1.3rem; font-weight:800; color:var(--primary);"
+                              th:text="${#numbers.formatDecimal(order?.totalAmount ?: 0,0,'COMMA',0,'POINT')} + ' đ'">0 đ</span>
+                    </div>
+                    <button class="btn btn-primary"
+                            style="width:100%; padding:15px; font-size:1.1rem; margin-bottom:10px;
+                                   background:linear-gradient(135deg,#10b981 0%,#059669 100%);
+                                   border:none; box-shadow:0 4px 12px rgba(16,185,129,.2);"
+                            th:data-order-id="${order?.id}"
+                            th:data-total-amount="${order?.totalAmount}"
+                            th:data-table-num="${table.tableNumber}"
+                            th:data-table-id="${table.id}"
+                            th:data-vat-enabled="${billSettings.enableVat}"
+                            th:data-vat-percentage="${billSettings.vatPercentage}"
+                            th:data-discount-enabled="${billSettings.enableDiscount}"
+                            th:data-discount-percentage="${billSettings.discountPercentage}"
+                            onclick="handleCheckout(this)">
+                        <i class="bi bi-wallet2"></i> THANH TOÁN
+                    </button>
+                    <form id="checkoutForm" th:action="@{/order/checkout/{tId}(tId=${table.id})}"
+                          method="post" style="display:none;">
+                        <input type="hidden" name="orderId"        th:value="${order?.id}">
+                        <input type="hidden" name="paymentMethod"  id="checkoutPaymentMethod">
+                        <input type="hidden" name="printBill"      id="checkoutPrintBill" value="false">
+                    </form>
+                    <div class="cart-footer-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px;">
+                        <button type="button" class="btn" style="background:#eab308; color:white; font-size:0.75rem; padding:10px 0;"
+                                th:onclick="'performKitchenPrint(' + ${order?.id} + ')'">
+                            <i class="bi bi-bell-fill"></i> BÁO BẾP
+                        </button>
+                        <button type="button" class="btn" style="background:#1e293b; color:white; font-size:0.75rem; padding:10px 0;"
+                                th:data-order-id="${order?.id}"
+                                th:data-table-num="${table.tableNumber}"
+                                th:data-staff-name="${currentStaff.fullName}"
+                                th:data-total-amount="${order?.totalAmount}"
+                                th:data-vat-enabled="${billSettings.enableVat}"
+                                th:data-vat-percentage="${billSettings.vatPercentage}"
+                                th:data-discount-enabled="${billSettings.enableDiscount}"
+                                th:data-discount-percentage="${billSettings.discountPercentage}"
+                                onclick="handleKitchenSlip(this)">
+                            <i class="bi bi-printer-fill"></i> TẠM TÍNH
+                        </button>
+                        <button type="button" class="btn" style="background:#f43f5e; color:white; font-size:0.75rem; padding:10px 0;"
+                                th:onclick="'confirmClearTable(' + ${table.id} + ')'">
+                            <i class="bi bi-x-circle"></i> TRẢ BÀN
+                        </button>
+                    </div>
+                </div>
+                <div class="cart-footer" th:if="${order == null}"
+                     style="text-align:center; padding:20px; color:#94a3b8;">
+                    <p style="margin:0; font-style:italic;">Chưa có món nào được chọn</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ╔══════════════════════════════╗
+             ║  MOBILE BOTTOM CART BAR      ║
+             ╚══════════════════════════════╝ -->
+        <button class="mobile-cart-toggle" onclick="toggleCart()" aria-label="Xem giỏ hàng">
+            <span style="display:flex; align-items:center; gap:0.5rem;">
+                <i class="bi bi-cart3" style="font-size:1.2rem;"></i>
+                XEM GIỎ HÀNG
+            </span>
+            <span class="cart-total" id="mobileCartSummary"
+                  th:text="${#numbers.formatDecimal(order?.totalAmount ?: 0,0,'COMMA',0,'POINT') + 'đ'}">0đ</span>
+        </button>
+    </div>
+
+    <!-- Hidden forms for business logic -->
+    <form id="addItemForm" th:action="@{'/order/add-item/' + ${table.id}}" method="post">
+        <input type="hidden" name="orderId"   th:value="${order != null ? order.id : ''}">
+        <input type="hidden" name="productId" id="formProductId">
+        <input type="hidden" name="variantId" id="formVariantId">
+        <input type="hidden" name="quantity"  id="swal-form-qty" value="1">
+        <input type="hidden" name="note"      id="swal-form-note">
+    </form>
+    <form id="updateNoteForm" th:action="@{'/order/update-note/' + ${table.id}}" method="post">
+        <input type="hidden" name="orderId"     id="noteFormOrderId">
+        <input type="hidden" name="productId"   id="noteFormProductId">
+        <input type="hidden" name="variantName" id="noteFormVariantName">
+        <input type="hidden" name="note"        id="noteFormValue">
+    </form>
+    <form id="genericActionForm" method="post" style="display:none;">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+    </form>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script th:inline="javascript">
+        /* ── Cart toggle ──────────────────────────── */
+        document.addEventListener('DOMContentLoaded', () => {
+            if (sessionStorage.getItem('openCartAfterReload') === 'true') {
+                sessionStorage.removeItem('openCartAfterReload');
+                if (window.innerWidth <= 992) {
+                    toggleCart();
+                }
+            }
+        });
+
+        function toggleCart() {
+            const cart    = document.querySelector('.cart-section');
+            const overlay = document.getElementById('cartOverlay');
+            if (cart && overlay) {
+                cart.classList.toggle('mobile-open');
+                overlay.classList.toggle('active');
+                // Prevent body scroll when cart is open
+                document.body.style.overflow = cart.classList.contains('mobile-open') ? 'hidden' : '';
+            }
+        }
+
+        let selectedCategoryId = 0;
+
+        /* ── Item click ─────────────────────────── */
+        function handleItemClick(element) {
+            if (element.getAttribute('data-available') !== 'true') {
+                Swal.fire({ icon:'error', title:'Món này đã hết!',
+                            text:'Vui lòng chọn món khác.', confirmButtonColor:'#f43f5e' });
+                return;
+            }
+            const id         = element.getAttribute('data-id');
+            const name       = element.getAttribute('data-name');
+            const basePrice  = parseFloat(element.getAttribute('data-price'));
+            const variantsStr = element.getAttribute('data-variants');
+
+            if (variantsStr && variantsStr.trim() !== '') {
+                const variants = variantsStr.split('|').map(v => {
+                    const p = v.split(':');
+                    return { id: p[0], price: parseFloat(p[1]), name: p[2] };
+                });
+                showVariantSelection(id, name, basePrice, variants);
+            } else {
+                addItem(id, name, null);
+            }
+        }
+
+        function showVariantSelection(productId, productName, basePrice, variants) {
+            let html = '<p style="text-align:left;font-size:.85rem;color:#64748b;margin-bottom:15px;">Chọn mức giá:</p>';
+            html += '<div style="display:grid;grid-template-columns:1fr;gap:10px;">';
+            html += `<button type="button" class="btn"
+                        style="padding:12px 15px;border:2px solid var(--primary);border-radius:10px;
+                               background:#eff6ff;text-align:left;"
+                        onclick="selectVariant('${productId}','${productName}','','Giá gốc')">
+                       <div style="font-weight:700;font-size:1.1rem;color:var(--primary);">${basePrice.toLocaleString()}đ</div>
+                       <div style="font-size:.8rem;color:#1e40af;">Mức giá mặc định</div>
+                     </button>`;
+            variants.forEach(v => {
+                const vName = (v.name && v.name.trim()) ? v.name : v.price.toLocaleString()+'đ';
+                html += `<button type="button" class="btn"
+                            style="padding:12px 15px;border:1px solid #e2e8f0;border-radius:10px;
+                                   background:white;text-align:left;"
+                            onclick="selectVariant('${productId}','${productName}','${v.id}','${vName}')">
+                           <div style="font-weight:600;font-size:1.1rem;color:#1e293b;">${v.price.toLocaleString()}đ</div>
+                           <div style="font-size:.8rem;color:#64748b;">${v.name || 'Giá tùy chọn'}</div>
+                         </button>`;
+            });
+            html += '</div>';
+            Swal.fire({ title:'Chọn giá: '+productName, html, showConfirmButton:false,
+                        showCancelButton:true, cancelButtonText:'Đóng' });
+        }
+
+        function selectVariant(productId, productName, variantId, priceLabel) {
+            addItem(productId, productName, variantId, priceLabel);
+        }
+
+        function addItem(productId, productName, variantId, priceLabel) {
+            const title = variantId ? `Thêm ${productName} (${priceLabel})` : `Thêm món: ${productName}`;
+            Swal.fire({
+                title,
+                html: `<div style="text-align:left;">
+                         <label style="font-size:.9rem;font-weight:600;display:block;margin-bottom:8px;">Số lượng:</label>
+                         <input type="number" id="swal-qty" class="swal2-input" value="1" min="1"
+                                style="width:80%;margin:0 auto 20px;display:block;">
+                         <label style="font-size:.9rem;font-weight:600;display:block;margin-bottom:8px;">Ghi chú:</label>
+                         <textarea id="swal-note" class="swal2-textarea"
+                                   placeholder="VD: Không cay, nhiều hành..."
+                                   style="width:80%;margin:0 auto;display:block;"></textarea>
+                       </div>`,
+                showCancelButton: true,
+                confirmButtonText: 'Thêm vào đơn',
+                cancelButtonText:  'Hủy',
+                confirmButtonColor: 'var(--primary)',
+                preConfirm: () => {
+                    const qty = document.getElementById('swal-qty').value;
+                    if (!qty || qty < 1) Swal.showValidationMessage('Số lượng không hợp lệ');
+                    return { qty, note: document.getElementById('swal-note').value };
+                }
+            }).then(result => {
+                if (result.isConfirmed) {
+                    document.getElementById('formProductId').value    = productId;
+                    document.getElementById('formVariantId').value    = variantId || '';
+                    document.getElementById('swal-form-qty').value    = result.value.qty;
+                    document.getElementById('swal-form-note').value   = result.value.note;
+                    document.getElementById('addItemForm').submit();
+                }
+            });
+        }
+
+        function filterByCategory(categoryId, element) {
+            selectedCategoryId = categoryId;
+            document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+            element.classList.add('active');
+            filterProducts();
+        }
+
+        function filterProducts() {
+            const searchText = document.getElementById('productSearch').value.toLowerCase();
+            document.querySelectorAll('.prod-card').forEach(card => {
+                const catId = parseInt(card.getAttribute('data-category-id'));
+                const name  = card.getAttribute('data-product-name-lower');
+                const ok    = (selectedCategoryId === 0 || catId === selectedCategoryId) && name.includes(searchText);
+                card.style.display = ok ? 'block' : 'none';
+            });
+        }
+
+        function editNote(orderId, productId, variantName, productName, currentNote) {
+            Swal.fire({
+                title: 'Ghi chú: ' + productName + (variantName ? ' ('+variantName+')' : ''),
+                input: 'textarea',
+                inputPlaceholder: 'Nhập ghi chú mới...',
+                inputValue: currentNote,
+                showCancelButton: true,
+                confirmButtonText: 'Lưu ghi chú',
+                cancelButtonText:  'Hủy'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    document.getElementById('noteFormOrderId').value    = orderId;
+                    document.getElementById('noteFormProductId').value  = productId;
+                    document.getElementById('noteFormVariantName').value = variantName || '';
+                    document.getElementById('noteFormValue').value       = result.value;
+                    document.getElementById('updateNoteForm').submit();
+                }
+            });
+        }
+
+        function handleAction(url) {
+            if (window.innerWidth <= 992) {
+                sessionStorage.setItem('openCartAfterReload', 'true');
+            }
+            const form = document.getElementById('genericActionForm');
+            form.action = url;
+            form.submit();
+        }
+
+        function updateExactQty(tableId, orderId, itemId, newQtyStr, oldQty) {
+            const newQty = parseInt(newQtyStr);
+            if (isNaN(newQty) || newQty < 0) {
+                Swal.fire('Lỗi', 'Số lượng không hợp lệ', 'error').then(() => location.reload());
+                return;
+            }
+            const delta = newQty - oldQty;
+            if (delta !== 0) {
+                handleAction('/order/update-qty/' + tableId + '/' + orderId + '/' + itemId + '/' + delta);
+            }
+        }
+
+        function handleKitchenSlip(btn) {
+            showKitchenSlip(
+                btn.getAttribute('data-table-num'),
+                btn.getAttribute('data-staff-name'),
+                btn.getAttribute('data-order-id'),
+                parseFloat(btn.getAttribute('data-total-amount')) || 0,
+                btn.getAttribute('data-vat-enabled') === 'true',
+                parseFloat(btn.getAttribute('data-vat-percentage')) || 0,
+                btn.getAttribute('data-discount-enabled') === 'true',
+                parseFloat(btn.getAttribute('data-discount-percentage')) || 0
+            );
+        }
+
+        function showKitchenSlip(tableNum, staffName, orderId, subtotal, vatEnabled, vatPercentage, discountEnabled, discountPercentage) {
+            const items = document.querySelectorAll('.cart-item[data-item-name]');
+            let itemsHtml = '', totalQty = 0;
+            
+            // Map để gộp món (giống backend)
+            const groupedItems = new Map();
+            
+            items.forEach((item) => {
+                const name = item.getAttribute('data-item-name');
+                const qty  = parseInt(item.getAttribute('data-item-qty'));
+                const price = parseFloat(item.getAttribute('data-item-price'));
+                const subTotal = parseFloat(item.getAttribute('data-item-subtotal'));
+                const note = item.getAttribute('data-item-note') || '';
+                
+                if (groupedItems.has(name)) {
+                    let existing = groupedItems.get(name);
+                    existing.qty += qty;
+                    existing.subTotal += subTotal;
+                    if (note && note.trim() !== 'null' && note.trim() !== '') {
+                        if (!existing.note) {
+                            existing.note = note;
+                        } else {
+                            existing.note += " | " + note;
+                        }
+                    }
+                } else {
+                    let finalNote = (note && note.trim() !== 'null' && note.trim() !== '') ? note : '';
+                    groupedItems.set(name, { qty, price, subTotal, note: finalNote });
+                }
+            });
+            
+            let index = 0;
+            for (let [name, data] of groupedItems) {
+                totalQty += data.qty;
+                let noteHtml = '';
+                if (data.note) {
+                    noteHtml = `<div style="font-size:0.75rem; color:#64748b; font-style:italic; margin-top:3px; font-weight:400;">Note: ${data.note}</div>`;
+                }
+                itemsHtml += `<tr>
+                    <td style="padding:8px 0;font-weight:700;font-size:0.95rem;">
+                        <div style="margin-bottom: 4px;">${name}${noteHtml}</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-weight:normal; font-size:0.9rem; color:#475569;">
+                            <span style="flex:1;">${data.price.toLocaleString()}</span>
+                            <span style="width:40px; text-align:center;">x${data.qty}</span>
+                            <span style="width:80px; text-align:right; font-weight:700; color:#000;">${data.subTotal.toLocaleString()}</span>
+                        </div>
+                    </td>
+                </tr>`;
+                if (index < groupedItems.size - 1) {
+                    itemsHtml += `<tr><td style="border-top:1px dashed #cbd5e1;height:1px;padding:2px 0;"></td></tr>`;
+                }
+                index++;
+            }
+            
+            let grandTotal = subtotal;
+            let vatHtml = '';
+            
+            if (discountEnabled && discountPercentage > 0) {
+                const discountAmount = Math.round(subtotal * discountPercentage / 100);
+                grandTotal = subtotal - discountAmount;
+                vatHtml = `
+                    <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-top:5px; color:#64748b;">
+                        <span>Tạm tính:</span>
+                        <span>${subtotal.toLocaleString()} đ</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-top:5px; color:#ef4444;">
+                        <span>Giảm giá (${discountPercentage}%):</span>
+                        <span>- ${discountAmount.toLocaleString()} đ</span>
+                    </div>
+                `;
+            } else if (vatEnabled && vatPercentage > 0) {
+                const vatAmount = Math.round(subtotal * vatPercentage / 100);
+                grandTotal = subtotal + vatAmount;
+                vatHtml = `
+                    <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-top:5px; color:#64748b;">
+                        <span>Tạm tính:</span>
+                        <span>${subtotal.toLocaleString()} đ</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-top:5px; color:#64748b;">
+                        <span>Thuế VAT (${vatPercentage}%):</span>
+                        <span>${vatAmount.toLocaleString()} đ</span>
+                    </div>
+                `;
+            }
+            
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')} ${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}`;
+            Swal.fire({
+                title: 'XÁC NHẬN IN TẠM TÍNH',
+                html: `<div style="text-align:left;color:#1e293b;font-family:'Outfit',sans-serif;">
+                    <div style="text-align:center;border-bottom:2px solid #1e293b;padding-bottom:10px;margin-bottom:10px;">
+                        <h2 style="margin:0;font-size:1.5rem;letter-spacing:1px;">PHIẾU TẠM TÍNH</h2>
+                        <div style="font-size:.9rem;margin-top:5px;">${timeStr}</div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:700;
+                                margin-bottom:15px;background:#f1f5f9;padding:10px;border-radius:8px;">
+                        <span>BÀN: ${tableNum}</span>
+                        <span style="font-size:.85rem;font-weight:400;">NV: ${staffName}</span>
+                    </div>
+                    <table style="width:100%;border-collapse:collapse; margin-bottom: 15px;">
+                        <thead><tr style="border-bottom:1px solid #1e293b;font-size:.85rem;color:#64748b;">
+                            <th style="text-align:left;padding:5px 0;">TÊN MÓN</th>
+                        </tr></thead>
+                        <tbody>${itemsHtml}</tbody>
+                    </table>
+                    
+                    <div style="border-top:2px solid #1e293b; padding-top:10px;">
+                        ${vatHtml}
+                        <div style="display:flex; justify-content:space-between; font-size:1.3rem; font-weight:800; color:var(--primary); margin-top:10px;">
+                            <span>TỔNG CỘNG:</span>
+                            <span>${grandTotal.toLocaleString()} đ</span>
+                        </div>
+                    </div>
+                    <div style="text-align:center;font-size:.8rem;margin-top:15px;color:#94a3b8;">*** TẠM TÍNH ***</div>
+                </div>`,
+                width: '400px',
+                showCancelButton: true,
+                confirmButtonText: '<i class="bi bi-printer"></i> IN PHIẾU',
+                cancelButtonText: 'ĐÓNG',
+                confirmButtonColor: '#1e293b', cancelButtonColor: '#64748b'
+            }).then(result => { if (result.isConfirmed) performProvisionalPrint(orderId); });
+        }
+
+        function performProvisionalPrint(orderId) {
+            if (!orderId) return;
+            Swal.fire({ title:'Đang in phiếu tạm tính...', allowOutsideClick:false,
+                        didOpen: () => Swal.showLoading() });
+            fetch('/order/reprint/' + orderId, {
+                method: 'POST',
+                headers: { 'Content-Type':'application/json',
+                           'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]')?.getAttribute('content') }
+            }).then(r => r.json()).then(data => {
+                if (data.success || (data.message && data.message.includes('thành công'))) {
+                    Swal.fire({ title:'Thành công', text:data.message, icon:'success', timer:1500, showConfirmButton:false });
+                } else { Swal.fire('Lỗi', data.message, 'error'); }
+            }).catch(() => Swal.fire('Lỗi','Không thể kết nối đến máy in!','error'));
+        }
+
+        function performKitchenPrint(orderId) {
+            if (!orderId) { Swal.fire('Thông báo','Vui lòng thêm ít nhất 1 món!','warning'); return; }
+            Swal.fire({ title:'Đang in báo bếp...', allowOutsideClick:false,
+                        didOpen: () => Swal.showLoading() });
+            fetch('/order/print-kitchen/' + orderId, {
+                method: 'POST',
+                headers: { 'Content-Type':'application/json',
+                           'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]')?.getAttribute('content') }
+            }).then(r => r.json()).then(data => {
+                if (data.message && data.message.includes('thành công')) {
+                    Swal.fire({ title:'Thành công', text:data.message, icon:'success', timer:1500, showConfirmButton:false }).then(() => location.reload());
+                } else { Swal.fire('Lỗi', data.message || 'Lỗi hệ thống', 'error'); }
+            }).catch(() => Swal.fire('Lỗi','Không thể kết nối đến máy in!','error'));
+        }
+
+        function handleCheckout(btn) {
+            const orderId  = btn.getAttribute('data-order-id');
+            const subtotal = parseFloat(btn.getAttribute('data-total-amount')) || 0;
+            const tableNum = btn.getAttribute('data-table-num');
+            if (subtotal <= 0) { Swal.fire('Thông báo','Đơn hàng chưa có món nào!','warning'); return; }
+            const vatEnabled    = btn.getAttribute('data-vat-enabled') === 'true';
+            const vatPercentage = parseFloat(btn.getAttribute('data-vat-percentage')) || 0;
+            const discountEnabled = btn.getAttribute('data-discount-enabled') === 'true';
+            const discountPercentage = parseFloat(btn.getAttribute('data-discount-percentage')) || 0;
+            
+            let grandTotal = subtotal, vatMessage = '';
+            if (discountEnabled && discountPercentage > 0) {
+                const discountAmount = Math.round(subtotal * discountPercentage / 100);
+                grandTotal = subtotal - discountAmount;
+                vatMessage = ` (Đã giảm ${discountPercentage}%)`;
+            } else if (vatEnabled && vatPercentage > 0) {
+                const vatAmount = Math.round(subtotal * vatPercentage / 100);
+                grandTotal = subtotal + vatAmount;
+                vatMessage = ` (Đã bao gồm ${vatPercentage}% VAT)`;
+            }
+            Swal.fire({
+                title: 'Hình thức thanh toán',
+                html: `<div style="font-weight:700;font-size:1.4rem;color:var(--primary);margin-bottom:5px;">${grandTotal.toLocaleString()} đ</div>
+                       <div style="font-size:.85rem;color:#64748b;">${vatMessage}</div>`,
+                icon: 'question',
+                showDenyButton: true, showCancelButton: true,
+                confirmButtonText: '<i class="bi bi-cash-stack"></i> Tiền mặt',
+                denyButtonText:    '<i class="bi bi-qr-code-scan"></i> Chuyển khoản',
+                cancelButtonText:  'Đóng',
+                confirmButtonColor: '#10b981', denyButtonColor: '#3b82f6'
+            }).then(result => {
+                if (result.isConfirmed) confirmPayment(orderId,'CASH','Xác nhận khách đã trả đủ tiền mặt?');
+                else if (result.isDenied) showQR(orderId, grandTotal, tableNum, vatMessage);
+            });
+        }
+
+        function showQR(orderId, totalAmount, tableNum, vatMessage) {
+            Swal.fire({
+                title: 'QUÉT MÃ THANH TOÁN',
+                html: `<div style="text-align:center;">
+                    <div style="background:white;padding:15px;border-radius:12px;border:1px solid #e2e8f0;
+                                box-shadow:0 4px 12px rgba(0,0,0,.05);margin-bottom:20px;display:inline-block;">
+                        <img src="/uploads/settings/qr-payment.png"
+                             onerror="this.src='https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=CHUA_CAI_MA_QR'"
+                             style="width:100%; max-width:350px; aspect-ratio:1; object-fit:contain; border-radius:8px;">
+                    </div>
+                    <div style="background:#eff6ff;padding:12px;border-radius:10px;margin-bottom:20px;border:1px solid #bfdbfe;">
+                        <p style="margin:0;font-size:.9rem;color:#1e40af;">Tổng cộng thanh toán:</p>
+                        <p style="margin:0;font-weight:800;font-size:1.6rem;color:#1e3a8a;">${totalAmount.toLocaleString()} đ</p>
+                        <p style="margin:0;font-size:.75rem;color:#3b82f6;">${vatMessage || ''}</p>
+                    </div>
+                </div>`,
+                width: window.innerWidth <= 600 ? '90%' : '400px',
+                padding: '1em',
+                showCancelButton: true,
+                confirmButtonText: '<i class="bi bi-check-lg"></i> XÁC NHẬN ĐÃ NHẬN TIỀN',
+                cancelButtonText:  'QUAY LẠI',
+                confirmButtonColor: '#10b981'
+            }).then(result => {
+                if (result.isConfirmed) confirmPayment(orderId,'TRANSFER','Hệ thống sẽ ghi nhận thanh toán chuyển khoản!');
+            });
+        }
+
+        function confirmPayment(orderId, method, message) {
+            Swal.fire({
+                title: 'Hoàn tất thanh toán', 
+                html: `
+                    <div style="font-size: 1rem; color: #475569; margin-bottom: 20px;">${message}</div>
+                    <div style="margin-top: 15px; font-size: 1rem;">
+                        <label style="display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; color: #1e293b; padding: 10px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="printBillCheckbox" style="width: 20px; height: 20px; accent-color: var(--primary);">
+                            <span style="font-weight: 600;">In hóa đơn thanh toán</span>
+                        </label>
+                    </div>
+                `,
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'XÁC NHẬN HOÀN TẤT', cancelButtonText: 'KIỂM TRA LẠI',
+                confirmButtonColor: '#10b981'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    const printBill = document.getElementById('printBillCheckbox').checked;
+                    document.getElementById('checkoutPaymentMethod').value = method;
+                    document.getElementById('checkoutPrintBill').value = printBill ? 'true' : 'false';
+                    document.getElementById('checkoutForm').submit();
+                }
+            });
+        }
+
+        function confirmClearTable(tableId) {
+            Swal.fire({
+                title: 'Xác nhận trả bàn?',
+                text: 'Toàn bộ món ăn trong đơn hàng sẽ bị hủy!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#f43f5e', cancelButtonColor: '#1e293b',
+                confirmButtonText: 'Đồng ý, trả bàn', cancelButtonText: 'Hủy'
+            }).then(result => { if (result.isConfirmed) handleAction('/order/clear-table/' + tableId); });
+        }
+
+        /* ── Auto-sync product grid every 5s ─────── */
+        setInterval(function () {
+            if (typeof Swal !== 'undefined' && Swal.isVisible()) return;
+            fetch(window.location.href)
+                .then(r => r.text())
+                .then(html => {
+                    const doc  = new DOMParser().parseFromString(html, 'text/html');
+                    const next = doc.querySelector('#productContainer').innerHTML;
+                    if (next !== document.getElementById('productContainer').innerHTML) {
+                        document.getElementById('productContainer').innerHTML = next;
+                        filterProducts();
+                    }
+                }).catch(() => {});
+        }, 5000);
+    </script>
+    <script th:inline="javascript" th:if="${success}">
+        Swal.fire({ icon: 'success', title: 'Thành công', text: /*[[${success}]]*/ 'Success', timer: 2500, showConfirmButton: false });
+    </script>
+    <script th:inline="javascript" th:if="${error}">
+        Swal.fire({ icon: 'error', title: 'Lỗi', text: /*[[${error}]]*/ 'Error' });
+    </script>
+    <script th:inline="javascript" th:if="${warning}">
+        Swal.fire({ icon: 'warning', title: 'Lưu ý', text: /*[[${warning}]]*/ 'Warning', confirmButtonColor: '#f59e0b' });
+    </script>
+</body>
+</html>

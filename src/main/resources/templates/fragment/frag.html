@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<div th:fragment="sidebar(mode, activePage)">
+
+    <!-- Sidebar Toggle Button (Floating Hamburger) -->
+    <button class="menu-toggle" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Overlay for Mobile Backdrop -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <div class="sidebar" id="sidebar">
+        <style>
+            .badge-notif {
+                background: #f43f5e;
+                color: white;
+                font-size: 0.65rem;
+                padding: 2px 7px;
+                border-radius: 10px;
+                font-weight: 800;
+                position: absolute;
+                right: 15px;
+                top: 50%;
+                transform: translateY(-50%);
+                box-shadow: 0 2px 5px rgba(244, 63, 94, 0.4);
+            }
+            .nav-link { position: relative; }
+        </style>
+        <a th:href="@{/}" style="text-decoration: none; color: inherit; display: block;">
+            <div class="logo" th:text="${restaurantName}">Gia Đình</div>
+        </a>
+
+        <ul class="nav-menu">
+            <!-- 1. CHẾ ĐỘ ADMIN (HỆ THỐNG) -->
+            <th:block th:if="${mode == 'ADMIN_MAIN'}">
+                <li class="nav-item">
+                    <a th:href="@{/admin/users}" class="nav-link" th:classappend="${activePage == 'users'} ? 'active' : ''">
+                        <i class="bi bi-people"></i> Quản lý Tài khoản
+                        <span id="pending-user-badge-admin" class="badge-notif js-pending-badge" 
+                              th:style="${pendingUserCount > 0 ? 'display:block' : 'display:none'}" 
+                              th:text="${pendingUserCount}"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a th:href="@{/admin/maintenance}" class="nav-link" th:classappend="${activePage == 'maintenance'} ? 'active' : ''">
+                        <i class="bi bi-database-gear"></i> Bảo trì dữ liệu
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a th:href="@{/admin/settings}" class="nav-link" th:classappend="${activePage == 'settings'} ? 'active' : ''">
+                        <i class="bi bi-gear"></i> Cài đặt hệ thống
+                    </a>
+                </li>
+                <li class="nav-divider"></li>
+                <li class="nav-item">
+                    <a th:href="@{/management/dashboard}" class="nav-link">
+                        <i class="bi bi-gear-wide-connected"></i> Trang Quản lý
+                    </a>
+                </li>
+            </th:block>
+
+            <!-- 2. CHẾ ĐỘ QUẢN LÝ (MANAGEMENT) -->
+            <th:block th:if="${mode == 'MANAGEMENT'}">
+                <li class="nav-item">
+                    <a th:href="@{/admin/users/pending}" class="nav-link" th:classappend="${activePage == 'users-pending'} ? 'active' : ''" 
+                       style="background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.2);">
+                        <i class="bi bi-person-check" style="color: #f43f5e;"></i> Phê duyệt Nhân viên
+                        <span id="pending-user-badge-manager" class="badge-notif js-pending-badge" 
+                              th:style="${pendingUserCount > 0 ? 'display:block' : 'display:none'}" 
+                              th:text="${pendingUserCount}"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a th:href="@{/management/dashboard}" class="nav-link" th:classappend="${activePage == 'dashboard'} ? 'active' : ''">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a th:href="@{/management/areas}" class="nav-link" th:classappend="${activePage == 'areas'} ? 'active' : ''">
+                        <i class="bi bi-geo-alt"></i> Quản lý Khu vực
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a th:href="@{/management/tables}" class="nav-link" th:classappend="${activePage == 'tables'} ? 'active' : ''">
+                        <i class="bi bi-grid-3x3-gap"></i> Quản lý Bàn
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a th:href="@{/management/categories}" class="nav-link" th:classappend="${activePage == 'categories'} ? 'active' : ''">
+                        <i class="bi bi-tags"></i> Quản lý Thể loại
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a th:href="@{/management/products}" class="nav-link" th:classappend="${activePage == 'products'} ? 'active' : ''">
+                        <i class="bi bi-egg-fried"></i> Quản lý Món ăn
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a th:href="@{/management/orders}" class="nav-link" th:classappend="${activePage == 'orders'} ? 'active' : ''">
+                        <i class="bi bi-clock-history"></i> Lịch sử Đơn hàng
+                    </a>
+                </li>
+
+                <!-- NHÓM CÀI ĐẶT -->
+                <li class="nav-group" th:classappend="${activePage == 'printer' || activePage == 'payment-settings' || activePage == 'profile'} ? 'open' : ''">
+                    <a href="javascript:void(0)" class="nav-link has-sub" onclick="toggleNavGroup(this)">
+                        <i class="bi bi-gear"></i> Cài đặt
+                    </a>
+                    <ul class="nav-sub-menu">
+                        <li>
+                            <a th:href="@{/profile}" class="nav-sub-link" th:classappend="${activePage == 'profile'} ? 'active' : ''">
+                                <i class="bi bi-person-circle"></i> Hồ sơ cá nhân
+                            </a>
+                        </li>
+                        <li>
+                            <a th:href="@{/management/printer}" class="nav-sub-link" th:classappend="${activePage == 'printer'} ? 'active' : ''">
+                                <i class="bi bi-printer"></i> Cấu hình máy in
+                            </a>
+                        </li>
+                        <li>
+                            <a th:href="@{/management/settings/payment}" class="nav-sub-link" th:classappend="${activePage == 'payment-settings'} ? 'active' : ''">
+                                <i class="bi bi-qr-code"></i> QR Thanh toán
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                
+                <li class="nav-divider"></li>
+                <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                    <a th:href="@{/admin/users}" class="nav-link" style="background: rgba(255,255,255,0.05);">
+                        <i class="bi bi-shield-lock"></i> Trang Admin
+                    </a>
+                </li>
+            </th:block>
+
+            <!-- 3. CHẾ ĐỘ BÁN HÀNG (POS - STAFF) -->
+            <th:block th:if="${mode == 'STAFF'}">
+                <li class="nav-item">
+                    <a th:href="@{/}" class="nav-link" th:classappend="${activePage == 'tables' || activePage == 'home'} ? 'active' : ''">
+                        <i class="bi bi-grid"></i> Sơ đồ bàn
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a th:href="@{/order/history}" class="nav-link" th:classappend="${activePage == 'history'} ? 'active' : ''">
+                        <i class="bi bi-clock-history"></i> Lịch sử đơn hàng
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a th:href="@{/profile}" class="nav-link" th:classappend="${activePage == 'profile'} ? 'active' : ''">
+                        <i class="bi bi-person-circle"></i> Hồ sơ cá nhân
+                    </a>
+                </li>
+                
+                <li class="nav-divider"></li>
+                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')">
+                    <a th:href="@{/management/dashboard}" class="nav-link" style="background: rgba(255,255,255,0.05);">
+                        <i class="bi bi-gear-wide-connected"></i> Trang Quản lý
+                    </a>
+                </li>
+                <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                    <a th:href="@{/admin/users}" class="nav-link" style="background: rgba(255,255,255,0.05);">
+                        <i class="bi bi-shield-lock"></i> Trang Admin
+                    </a>
+                </li>
+            </th:block>
+
+            <!-- 4. NÚT CHUNG (QUAY VỀ POS) -->
+            <li class="nav-divider" th:if="${mode != 'STAFF'}"></li>
+            <li class="nav-item" th:if="${mode != 'STAFF'}">
+                <a th:href="@{/}" class="nav-link" style="background: var(--primary); color: var(--dark); font-weight: 800;">
+                    <i class="bi bi-shop"></i> VỀ TRANG POS
+                </a>
+            </li>
+        </ul>
+
+        <div class="logout-container">
+            <div style="padding: 10px 15px; color: rgba(255,255,255,0.4); font-size: 0.75rem;">
+                <i class="bi bi-person"></i> <span sec:authentication="name">User</span>
+            </div>
+            <form th:action="@{/logout}" method="post">
+                <button type="submit" class="nav-link"
+                    style="background:none; border:none; width:100%; cursor:pointer; color: #f87171;">
+                    <i class="bi bi-box-arrow-right"></i> Đăng xuất
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+
+            if (sidebar.classList.contains('active')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        function toggleNavGroup(el) {
+            el.parentElement.classList.toggle('open');
+        }
+
+        // Tự động cập nhật thông báo (Refresh notification badge)
+        async function updateNotificationBadge() {
+            try {
+                const response = await fetch('/api/notifications/pending-users-count');
+                if (response.ok) {
+                    const data = await response.json();
+                    const count = data.count;
+                    const badges = document.querySelectorAll('.js-pending-badge');
+                    
+                    badges.forEach(badge => {
+                        if (count > 0) {
+                            badge.textContent = count;
+                            badge.style.display = 'block';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error("Lỗi cập nhật thông báo:", error);
+            }
+        }
+
+        // Chạy cập nhật mỗi 5 giây
+        setInterval(updateNotificationBadge, 5000);
+    </script>
+</div>
+</html>

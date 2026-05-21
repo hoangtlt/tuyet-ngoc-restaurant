@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cấu hình Thanh toán | Quản lý</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link th:href="@{/css/admin.css}" rel="stylesheet">
+</head>
+<body>
+    <div th:replace="~{fragment/frag :: sidebar(${mode}, 'payment-settings')}"></div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <div class="page-title">
+                <h1>Cấu hình QR Thanh toán</h1>
+                <p>Cập nhật mã QR ngân hàng hoặc ví điện tử để hiển thị tại trang bán hàng.</p>
+            </div>
+        </div>
+
+        <div th:if="${success}" class="badge badge-success" style="margin-bottom: 20px; padding: 15px; width: 100%; display: block;">
+            <i class="bi bi-check-circle"></i> <span th:text="${success}"></span>
+        </div>
+        <div th:if="${error}" class="badge" style="background:#fee2e2; color:#b91c1c; margin-bottom: 20px; padding: 15px; width: 100%; display: block;">
+            <i class="bi bi-exclamation-triangle"></i> <span th:text="${error}"></span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 400px; gap: 30px;">
+            <div class="content-card">
+                <h3 style="margin-bottom: 25px;"><i class="bi bi-upload"></i> Tải lên mã QR mới</h3>
+                
+                <form th:action="@{/management/settings/payment/update-qr}" method="post" enctype="multipart/form-data">
+                    <div class="form-group" style="border: 2px dashed #e2e8f0; padding: 40px; border-radius: 15px; text-align: center;">
+                        <i class="bi bi-image" style="font-size: 3rem; color: #cbd5e1; display: block; margin-bottom: 15px;"></i>
+                        <label for="qrImage" style="cursor: pointer; color: var(--primary); font-weight: 600;">
+                            Bấm để chọn tệp ảnh QR
+                        </label>
+                        <input type="file" id="qrImage" name="qrImage" accept="image/*" style="display: none;" onchange="previewFile()">
+                        <p id="fileName" style="margin-top: 10px; font-size: 0.9rem; color: #64748b;">Chưa có tệp nào được chọn</p>
+                    </div>
+
+                    <div style="margin-top: 30px;">
+                        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 15px;">
+                            <i class="bi bi-cloud-arrow-up"></i> CẬP NHẬT MÃ QR
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="content-card" style="text-align: center;">
+                <h3 style="margin-bottom: 20px;"><i class="bi bi-eye"></i> QR Hiện tại</h3>
+                <div style="background: #f8fafc; padding: 20px; border-radius: 15px; border: 1px solid #e2e8f0;">
+                    <img id="qrPreview" th:src="@{/uploads/settings/qr-payment.png}" 
+                         onerror="this.src='https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=CHUA_CO_MA_QR'"
+                         style="width: 100%; border-radius: 10px; background: white;">
+                    <p style="margin-top: 15px; font-size: 0.85rem; color: #94a3b8;">Ảnh này sẽ hiển thị cho nhân viên staff quét khi tính tiền.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function previewFile() {
+            const preview = document.getElementById('qrPreview');
+            const file = document.querySelector('input[type=file]').files[0];
+            const fileNameDisplay = document.getElementById('fileName');
+            const reader = new FileReader();
+
+            if (file) {
+                fileNameDisplay.textContent = "Đã chọn: " + file.name;
+                reader.addEventListener("load", function () {
+                    preview.src = reader.result;
+                }, false);
+                reader.readAsDataURL(file);
+            }
+        }
+    </script>
+</body>
+</html>

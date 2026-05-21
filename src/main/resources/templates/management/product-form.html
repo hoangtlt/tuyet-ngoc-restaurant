@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Cập nhật món ăn | Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link th:href="@{/css/admin.css}" rel="stylesheet">
+</head>
+<body>
+    <div th:replace="~{fragment/frag :: sidebar(${mode}, 'products')}"></div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <div class="page-title">
+                <h1 th:text="${title}">Quản lý Thực đơn</h1>
+                <p>Nhập thông tin chi tiết cho món ăn hoặc đồ uống.</p>
+            </div>
+            <a th:href="@{/management/products}" class="btn" style="background:#e2e8f0; color:var(--dark);">Quay lại</a>
+        </div>
+
+        <div class="content-card" style="max-width: 600px;">
+            <form th:action="@{/management/products/save}" th:object="${product}" method="post" enctype="multipart/form-data">
+                <input type="hidden" th:field="*{id}">
+                <input type="hidden" th:field="*{imageUrl}"> <!-- Giữ URL cũ nếu không upload ảnh mới -->
+                <input type="hidden" th:field="*{soldQuantity}"> <!-- Giữ nguyên số lượng đã bán -->
+                
+                <div class="form-group">
+                    <label>Tên món ăn</label>
+                    <input type="text" th:field="*{name}" placeholder="VD: Gà nướng lu, Lẩu thái..." required>
+                </div>
+
+                <div class="form-group">
+                    <label>Danh mục</label>
+                    <select th:field="*{category.id}" required>
+                        <option th:each="c : ${categories}" th:value="${c.id}" th:text="${c.name}"></option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Giá bán (VNĐ)</label>
+                    <input type="number" th:field="*{price}" placeholder="VD: 150000" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Hình ảnh món ăn</label>
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <div th:if="${product.imageUrl != null}" style="width: 80px; height: 80px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
+                            <img th:src="${product.imageUrl}" style="width: 100%; height: 100%; object-fit: cover;">
+                        </div>
+                        <input type="file" name="imageFile" accept="image/*" style="flex: 1;">
+                    </div>
+                    <small style="color:var(--text-muted); margin-top: 5px; display: block;">Chọn ảnh từ máy tính của bạn (.jpg, .png)</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Trạng thái</label>
+                    <select th:field="*{available}">
+                        <option value="true">Sẵn sàng phục vụ</option>
+                        <option value="false">Tạm hết món</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-top: 30px; padding-top: 20px; border-top: 1px dashed #e2e8f0;">
+                    <label style="font-weight: 600; color: var(--primary);"><i class="bi bi-tags"></i> Các mức giá khác (Nếu có)</label>
+                    <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 15px;">Dùng khi bạn muốn bán 1 món với nhiều mức giá (Ví dụ: Thêm trứng, Tô đặc biệt...).</p>
+                    
+                    <div id="variantList">
+                        <div th:each="v, stat : *{variants}" class="variant-row" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <input type="hidden" th:field="*{variants[__${stat.index}__].id}">
+                            <input type="text" th:field="*{variants[__${stat.index}__].name}" placeholder="Tên (VD: Thêm trứng)" style="flex: 2;">
+                            <input type="number" th:field="*{variants[__${stat.index}__].price}" placeholder="Giá VNĐ" style="flex: 1;">
+                            <button type="button" class="btn" style="background: #fee2e2; color: #b91c1c; padding: 8px 12px;" onclick="removeVariant(this)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="btn" style="background: #f1f5f9; color: var(--primary); font-size: 0.9rem; margin-top: 5px;" onclick="addVariant()">
+                        <i class="bi bi-plus-circle"></i> Thêm mức giá mới
+                    </button>
+                </div>
+
+                <script th:inline="javascript">
+                    function addVariant() {
+                        const container = document.getElementById('variantList');
+                        const index = container.querySelectorAll('.variant-row').length;
+                        
+                        const div = document.createElement('div');
+                        div.className = 'variant-row';
+                        div.style.cssText = 'display: flex; gap: 10px; margin-bottom: 10px;';
+                        
+                        div.innerHTML = `
+                            <input type="text" name="variants[${index}].name" placeholder="Tên (VD: Đặc biệt)" style="flex: 2;">
+                            <input type="number" name="variants[${index}].price" placeholder="Giá VNĐ" style="flex: 1;">
+                            <button type="button" class="btn" style="background: #fee2e2; color: #b91c1c; padding: 8px 12px;" onclick="removeVariant(this)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        `;
+                        container.appendChild(div);
+                    }
+
+                    function removeVariant(btn) {
+                        btn.closest('.variant-row').remove();
+                        // Re-index remaining fields to ensure Spring binds them correctly
+                        reindexVariants();
+                    }
+
+                    function reindexVariants() {
+                        const rows = document.querySelectorAll('.variant-row');
+                        rows.forEach((row, idx) => {
+                            const nameInput = row.querySelector('input[name*=".name"]');
+                            const priceInput = row.querySelector('input[name*=".price"]');
+                            const idInput = row.querySelector('input[name*=".id"]');
+                            
+                            if (nameInput) nameInput.name = `variants[${idx}].name`;
+                            if (priceInput) priceInput.name = `variants[${idx}].price`;
+                            if (idInput) idInput.name = `variants[${idx}].id`;
+                        });
+                    }
+                </script>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Lưu thông tin</button>
+                    <button type="reset" class="btn" style="background:#f1f5f9;">Làm mới</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

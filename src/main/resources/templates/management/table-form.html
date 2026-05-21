@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Cập nhật bàn | Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link th:href="@{/css/admin.css}" rel="stylesheet">
+</head>
+<body>
+    <div th:replace="~{fragment/frag :: sidebar(${mode}, 'tables')}"></div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <div class="page-title">
+                <h1 th:text="${title}">Quản lý Bàn ăn</h1>
+                <p>Thiết lập thông tin bàn và khu vực tương ứng.</p>
+            </div>
+            <a th:href="@{/management/tables}" class="btn" style="background:#e2e8f0; color:var(--dark);">Quay lại</a>
+        </div>
+
+        <div class="content-card" style="max-width: 600px;">
+            <form th:action="@{/management/tables/save}" th:object="${diningTable}" method="post">
+                <input type="hidden" th:field="*{id}">
+                
+                <div class="form-group">
+                    <label>Tên bàn / Số hiệu bàn</label>
+                    <input type="text" th:field="*{tableNumber}" placeholder="VD: Bàn 01, VIP 01..." required>
+                </div>
+
+                <div class="form-group">
+                    <label>Khu vực</label>
+                    <select th:field="*{area.id}" required>
+                        <option th:each="a : ${areas}" th:value="${a.id}" th:text="${a.name}"></option>
+                    </select>
+                    <small style="color:var(--text-muted);">Bạn có thể thêm khu vực mới trong mục Quản lý Khu vực.</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Trạng thái bàn</label>
+                    <select th:field="*{status}" required>
+                        <option value="AVAILABLE">Sẵn sàng (Trống)</option>
+                        <option value="RESERVED">Đặt trước</option>
+                        <option value="OCCUPIED">Đang có khách</option>
+                    </select>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Lưu thông tin</button>
+                    <button type="reset" class="btn" style="background:#f1f5f9;">Làm mới</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

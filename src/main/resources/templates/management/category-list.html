@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý Danh mục | Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link th:href="@{/css/admin.css}" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div th:replace="~{fragment/frag :: sidebar(${mode}, 'categories')}"></div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <div class="page-title">
+                <h1>Quản lý Danh mục</h1>
+                <p>Phân loại món ăn giúp khách hàng và nhân viên dễ dàng lựa chọn.</p>
+            </div>
+            <a th:href="@{/management/categories/add}" class="btn btn-primary"><i class="bi bi-plus"></i> Thêm danh mục</a>
+        </div>
+
+        <div class="content-card" style="max-width: 800px;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th width="15%">ID</th>
+                        <th width="65%">Tên danh mục</th>
+                        <th width="20%">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="c : ${categories}">
+                        <td th:text="${c.id}"></td>
+                        <td th:text="${c.name}" style="font-weight: 600;"></td>
+                        <td class="actions">
+                            <a th:href="@{/management/categories/edit/{id}(id=${c.id})}" class="btn-action btn-edit"><i class="bi bi-pencil"></i></a>
+                            <a href="javascript:void(0)" th:onclick="'confirmDelete(' + ${c.id} + ')'" class="btn-action btn-delete"><i class="bi bi-trash"></i></a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        function confirmDelete(id) {
+            Swal.fire({
+                title: 'Xóa danh mục?',
+                text: "Lưu ý: Bạn chỉ có thể xóa danh mục không chứa món ăn nào!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#f43f5e',
+                confirmButtonText: 'Đồng ý'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = '/management/categories/delete/' + id;
+                }
+            })
+        }
+
+        // Hiện thông báo từ Server nếu có
+        document.addEventListener('DOMContentLoaded', function() {
+            const error = /*[[${error}]]*/ null;
+            const success = /*[[${success}]]*/ null;
+            if (error) {
+                Swal.fire('Lỗi', error, 'error');
+            }
+            if (success) {
+                Swal.fire('Thành công', success, 'success');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cấu hình Máy in | Quản lý</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link th:href="@{/css/admin.css}" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div th:replace="~{fragment/frag :: sidebar(${mode}, 'printer')}"></div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <div class="page-title">
+                <h1>Cấu hình Máy in</h1>
+                <p>Thiết lập kết nối với máy in hóa đơn Bluetooth/USB trên máy chủ.</p>
+            </div>
+        </div>
+
+        <!-- Thông báo -->
+        <div th:if="${success}" class="badge badge-success" style="margin-bottom: 20px; padding: 15px; width: 100%; display: block;">
+            <i class="bi bi-check-circle"></i> <span th:text="${success}"></span>
+        </div>
+        <div th:if="${error}" class="badge" style="background:#fee2e2; color:#b91c1c; margin-bottom: 20px; padding: 15px; width: 100%; display: block;">
+            <i class="bi bi-exclamation-triangle"></i> <span th:text="${error}"></span>
+        </div>
+
+        <div class="content-card" style="max-width: 600px;">
+            <h3 style="margin-bottom: 20px; color: var(--dark);"><i class="bi bi-printer"></i> Chọn máy in hóa đơn</h3>
+            
+            <form th:action="@{/management/printer/save}" method="post">
+                <input type="hidden" name="restaurantName" th:value="${billSettings.restaurantName}">
+                <input type="hidden" name="address" th:value="${billSettings.address}">
+                <input type="hidden" name="phone" th:value="${billSettings.phone}">
+                <input type="hidden" name="footerMessage" th:value="${billSettings.footerMessage}">
+                <input type="hidden" name="enableVat" th:value="${billSettings.enableVat}">
+                <input type="hidden" name="vatPercentage" th:value="${billSettings.vatPercentage}">
+                <div class="form-group">
+                    <label>Danh sách máy in hiện có trên PC:</label>
+                    <select name="printerName" class="form-control" style="padding: 12px; font-size: 1rem; cursor: pointer;">
+                        <option value="">-- Chọn máy in --</option>
+                        <option th:each="p : ${printers}" 
+                                th:value="${p}" 
+                                th:text="${p}"
+                                th:selected="${p == selectedPrinter}"></option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="background: #f0f9ff; padding: 15px; border-radius: 12px; border: 1px solid #bae6fd;">
+                    <label style="color: #0369a1; font-weight: 700;">Khổ giấy in hóa đơn:</label>
+                    <div style="display: flex; gap: 30px; margin-top: 10px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; color: #0c4a6e;">
+                            <input type="radio" name="paperSize" value="58" th:checked="${billSettings.paperSize == 58}" style="width: 20px; height: 20px;"> 58 mm (Nhỏ)
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; color: #0c4a6e;">
+                            <input type="radio" name="paperSize" value="80" th:checked="${billSettings.paperSize == 80}" style="width: 20px; height: 20px;"> 80 mm (Lớn)
+                        </label>
+                    </div>
+                </div>
+                
+                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; color: #64748b;">
+                    <i class="bi bi-info-circle"></i> <b>Lưu ý:</b> Hãy đảm bảo bạn đã kết nối máy in Bluetooth với Windows trước khi chọn ở đây.
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Lưu cấu hình
+                    </button>
+                    <a th:href="@{/management/printer/test}" class="btn" style="background: #1e293b; color: white;">
+                        <i class="bi bi-play-circle"></i> In thử nghiệm
+                    </a>
+                </div>
+            </form>
+        </div>
+        
+        <div class="content-card" style="max-width: 600px; margin-top: 30px;">
+            <h3 style="margin-bottom: 20px; color: var(--dark);"><i class="bi bi-file-earmark-text"></i> Thông tin hiển thị trên bill</h3>
+            
+            <form th:action="@{/management/printer/bill-settings}" method="post" th:object="${billSettings}">
+                <input type="hidden" name="selectedPrinterName" th:value="*{selectedPrinterName}">
+                <div class="form-group">
+                    <label>Tên quán/Cửa hàng:</label>
+                    <input type="text" name="restaurantName" th:value="*{restaurantName}" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Địa chỉ:</label>
+                    <input type="text" name="address" th:value="*{address}" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label>Số điện thoại:</label>
+                    <input type="text" name="phone" th:value="*{phone}" class="form-control">
+                </div>
+                
+
+                <div class="form-group" style="background: #f1f5f9; padding: 15px; border-radius: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                        <input type="checkbox" name="enableVat" id="enableVat" th:checked="*{enableVat}" style="width: 20px; height: 20px; cursor: pointer;">
+                        <label for="enableVat" style="margin-bottom: 0; cursor: pointer; font-weight: 600;">Áp dụng thuế VAT</label>
+                    </div>
+                    <div id="vatInputContainer" th:style="*{enableVat} ? 'display: block' : 'display: none'">
+                        <label style="font-size: 0.9rem;">Tỷ lệ thuế (%):</label>
+                        <input type="number" name="vatPercentage" th:value="*{vatPercentage}" class="form-control" step="0.1" min="0" max="100">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Lời chào chân trang (Footer):</label>
+                    <textarea name="footerMessage" th:text="*{footerMessage}" class="form-control" rows="2"></textarea>
+                </div>
+
+                <script>
+                    document.getElementById('enableVat').addEventListener('change', function() {
+                        document.getElementById('vatInputContainer').style.display = this.checked ? 'block' : 'none';
+                    });
+                </script>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Cập nhật thông tin bill
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="content-card" style="max-width: 600px; margin-top: 30px; background: #fffbeb; border: 1px solid #fde68a;">
+            <h4 style="color: #92400e;"><i class="bi bi-lightbulb"></i> Hướng dẫn kết nối máy in Bluetooth</h4>
+            <ol style="margin-top: 10px; margin-left: 20px; color: #92400e; font-size: 0.9rem; line-height: 1.6;">
+                <li>Bật Bluetooth trên máy in và trên máy tính (PC).</li>
+                <li>Vào <b>Settings (Windows) > Bluetooth</b> và thực hiện "Add device" để tìm máy in.</li>
+                <li>Nhập mã PIN nếu được hỏi (thường là 0000 hoặc 1234).</li>
+                <li>Sau khi Windows báo "Connected", quay lại trang web này và tải lại trang để thấy tên máy in trong danh sách.</li>
+            </ol>
+        </div>
+    </div>
+
+    <script th:if="${success}">
+        // Optional success notification
+    </script>
+</body>
+</html>

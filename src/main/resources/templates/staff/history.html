@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Lịch sử đơn hàng | Nhân viên</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link th:href="@{/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/mobile.css}" rel="stylesheet">
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .order-history-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f1f5f9;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .history-table th {
+            background: #f8fafc;
+            padding: 15px 20px;
+            text-align: left;
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .history-table td {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.95rem;
+            color: #1e293b;
+        }
+
+        .history-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-paid {
+            background: #f0fdf4;
+            color: #10b981;
+        }
+
+        .status-pending {
+            background: #fffbeb;
+            color: #f59e0b;
+        }
+
+        .status-cancelled {
+            background: #fff1f2;
+            color: #f43f5e;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .page-link {
+            padding: 8px 16px;
+            border-radius: 10px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .page-link.active {
+            background: var(--primary);
+            color: var(--dark);
+            border-color: var(--primary);
+        }
+
+        .page-link:hover:not(.active) {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        @media (max-width: 768px) {
+            .order-list-mobile {
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .desktop-only {
+                display: none !important;
+            }
+
+            .order-mobile-card {
+                background: white;
+                border-radius: 20px;
+                padding: 20px;
+                border: 1px solid rgba(0,0,0,0.03);
+                box-shadow: 0 4px 15px -1px rgba(0, 0, 0, 0.05);
+                position: relative;
+                overflow: hidden;
+                width: 100%;
+            }
+
+            .order-mobile-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 4px;
+                height: 100%;
+                background: var(--primary);
+            }
+
+            .order-mobile-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 12px;
+            }
+
+            .order-mobile-id {
+                font-weight: 800;
+                color: #64748b;
+                font-size: 0.8rem;
+                letter-spacing: 0.05em;
+            }
+
+            .order-mobile-time {
+                font-size: 0.8rem;
+                color: #94a3b8;
+                font-weight: 500;
+            }
+
+            .order-mobile-main {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                margin-top: 15px;
+                padding-top: 15px;
+                border-top: 1px solid #f1f5f9;
+            }
+
+            .order-mobile-table {
+                font-size: 1.1rem;
+                font-weight: 800;
+                color: #1e293b;
+            }
+
+            .order-mobile-total {
+                font-weight: 800;
+                color: var(--primary);
+                font-size: 1.25rem;
+            }
+
+            .order-mobile-actions {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+                margin-top: 20px;
+            }
+
+            .btn-mobile {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                padding: 12px;
+                border-radius: 12px;
+                font-weight: 700;
+                font-size: 0.9rem;
+                border: none;
+                transition: all 0.2s;
+            }
+
+            .btn-mobile-detail {
+                background: #f1f5f9;
+                color: #475569;
+            }
+
+            .btn-mobile-print {
+                background: #f0fdf4;
+                color: #10b981;
+                border: 1px solid #dcfce7 !important;
+            }
+
+            .btn-mobile:active {
+                transform: scale(0.95);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragment/frag :: sidebar(${mode}, 'history')}"></div>
+
+    <!-- Mobile Top Bar -->
+    <div class="mobile-topbar mobile-only">
+        <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Mở menu">
+            <i class="bi bi-list"></i>
+        </button>
+        <span class="brand">🍽 Lịch sử</span>
+    </div>
+
+    <div class="main-content">
+        <div class="page-header desktop-only">
+            <div class="page-title">
+                <h1>Lịch sử đơn hàng cá nhân</h1>
+                <p>Xem lại danh sách đơn hàng bạn đã thực hiện trong 7 ngày qua.</p>
+            </div>
+        </div>
+
+        <div class="mobile-only" style="margin-bottom: 20px;">
+            <h2 style="font-size: 1.25rem; font-weight: 800; text-align: center;">Lịch sử đơn hàng</h2>
+            <p style="font-size: 0.85rem; color: #64748b; text-align: center;">(7 ngày gần nhất)</p>
+        </div>
+
+        <div th:if="${orders.empty}" style="text-align:center; padding:80px 20px; color:#94a3b8;">
+            <i class="bi bi-journal-x" style="font-size:3rem; display:block; margin-bottom:20px;"></i>
+            <p>Bạn chưa có đơn hàng nào trong 7 ngày qua.</p>
+        </div>
+
+        <div th:if="${!orders.empty}">
+            <!-- Desktop View -->
+            <div class="order-history-card desktop-only">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Mã đơn</th>
+                            <th>Thời gian</th>
+                            <th>Bàn</th>
+                            <th>Tổng tiền</th>
+                            <th>Trạng thái</th>
+                            <th>Thanh toán</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="order : ${orders}">
+                            <td th:text="'#' + ${order.id}" style="font-weight: 700;">#123</td>
+                            <td th:text="${#temporals.format(order.createdAt, 'dd/MM/yyyy HH:mm')}">23/04/2026 15:30</td>
+                            <td th:text="${order.table.tableNumber}">Bàn 01</td>
+                            <td th:text="${#numbers.formatDecimal(order.totalAmount, 0, 'COMMA', 0, 'POINT')} + 'đ'" 
+                                style="font-weight: 700; color: #0f172a;">150,000đ</td>
+                            <td>
+                                <span class="status-badge" 
+                                      th:classappend="${order.status.name() == 'PAID' ? 'status-paid' : (order.status.name() == 'PENDING' ? 'status-pending' : 'status-cancelled')}"
+                                      th:text="${order.status.name() == 'PAID' ? 'Đã thanh toán' : (order.status.name() == 'PENDING' ? 'Đang chờ' : 'Đã hủy')}">
+                                    Đã thanh toán
+                                </span>
+                            </td>
+                            <td th:text="${order.paymentMethod != null ? (order.paymentMethod.name() == 'CASH' ? 'Tiền mặt' : 'Chuyển khoản') : '-'}">Tiền mặt</td>
+                            <td>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn" style="padding: 5px 10px; background: #f1f5f9; color: #64748b;" 
+                                            th:onclick="'showOrderDetail(' + ${order.id} + ')'" title="Xem chi tiết">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button class="btn" style="padding: 5px 10px; background: #f0fdf4; color: #10b981; border: 1px solid #dcfce7;" 
+                                            th:onclick="'reprintOrder(' + ${order.id} + ')'" title="In lại hóa đơn">
+                                        <i class="bi bi-printer"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile View -->
+            <div class="order-list-mobile mobile-only">
+                <div th:each="order : ${orders}" class="order-mobile-card">
+                    <div class="order-mobile-header">
+                        <span class="order-mobile-id" th:text="'ĐƠN #' + ${order.id}">ĐƠN #123</span>
+                        <span class="order-mobile-time" th:text="${#temporals.format(order.createdAt, 'HH:mm dd/MM')}">15:30 23/04</span>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span class="status-badge" 
+                              th:classappend="${order.status.name() == 'PAID' ? 'status-paid' : (order.status.name() == 'PENDING' ? 'status-pending' : 'status-cancelled')}"
+                              th:text="${order.status.name() == 'PAID' ? 'Đã thanh toán' : (order.status.name() == 'PENDING' ? 'Đang chờ' : 'Đã hủy')}">
+                        </span>
+                        <span style="font-size: 0.8rem; color: #64748b; font-weight: 600;" 
+                              th:text="${order.paymentMethod != null ? (order.paymentMethod.name() == 'CASH' ? '• Tiền mặt' : '• CK') : ''}"></span>
+                    </div>
+
+                    <div class="order-mobile-main">
+                        <div>
+                            <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px;">Vị trí</div>
+                            <div class="order-mobile-table" th:text="${order.table.tableNumber}">Bàn 01</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px;">Tổng cộng</div>
+                            <div class="order-mobile-total" th:text="${#numbers.formatDecimal(order.totalAmount, 0, 'COMMA', 0, 'POINT')} + 'đ'">150,000đ</div>
+                        </div>
+                    </div>
+
+                    <div class="order-mobile-actions">
+                        <button class="btn-mobile btn-mobile-detail" th:onclick="'showOrderDetail(' + ${order.id} + ')'">
+                            <i class="bi bi-eye"></i> Chi tiết
+                        </button>
+                        <button class="btn-mobile btn-mobile-print" th:onclick="'reprintOrder(' + ${order.id} + ')'">
+                            <i class="bi bi-printer"></i> In lại
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="pagination" th:if="${orders.totalPages > 1}">
+                <a th:if="${orders.hasPrevious()}" 
+                   th:href="@{/order/history(page=${orders.number - 1})}" class="page-link">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+                
+                <th:block th:each="i : ${#numbers.sequence(0, orders.totalPages - 1)}">
+                    <!-- Chỉ hiện 3 trang gần nhất trên mobile để tránh tràn -->
+                    <a th:href="@{/order/history(page=${i})}" 
+                       class="page-link" 
+                       th:classappend="${i == orders.number ? 'active' : ''}" 
+                       th:if="${i >= orders.number - 1 && i <= orders.number + 1}"
+                       th:text="${i + 1}">1</a>
+                </th:block>
+
+                <a th:if="${orders.hasNext()}" 
+                   th:href="@{/order/history(page=${orders.number + 1})}" class="page-link">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showOrderDetail(id) {
+            Swal.fire({
+                title: 'Đang tải thông tin...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            fetch('/order/api/detail/' + id)
+                .then(response => response.json())
+                .then(order => {
+                    let itemsHtml = `
+                        <div style="text-align: left; font-family: 'Outfit', sans-serif;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">
+                                <div>
+                                    <div style="font-size: 0.85rem; color: #64748b;">Mã đơn:</div>
+                                    <div style="font-weight: 800; font-size: 1.2rem;">#${order.id}</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 0.85rem; color: #64748b;">Bàn:</div>
+                                    <div style="font-weight: 800; font-size: 1.2rem;">${order.tableNumber}</div>
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom: 20px;">
+                                <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 15px; margin-bottom: 12px;">
+                                    <div>
+                                        <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Nhân viên</div>
+                                        <div style="font-weight: 600;">${order.staffName}</div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Thời gian</div>
+                                        <div style="font-weight: 600;">${order.createdAt}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid #f1f5f9; color: #64748b;">
+                                        <th style="text-align: left; padding: 10px 0;">Món ăn</th>
+                                        <th style="text-align: center; padding: 10px 0;">SL</th>
+                                        <th style="text-align: right; padding: 10px 0;">Thành tiền</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+
+                    order.items.forEach(item => {
+                        let itemName = item.productName;
+                        if (item.variantName) itemName += ` <small style="color: #3b82f6;">(${item.variantName})</small>`;
+
+                        itemsHtml += `
+                            <tr style="border-bottom: 1px solid #f8fafc;">
+                                <td style="padding: 12px 0;">
+                                    <div style="font-weight: 700; color: #1e293b;">${itemName}</div>
+                                    ${item.note ? `<div style="font-size: 0.75rem; font-style: italic; color: #94a3b8; margin-top: 2px;">* ${item.note}</div>` : ''}
+                                </td>
+                                <td style="text-align: center; font-weight: 600;">${item.quantity}</td>
+                                <td style="text-align: right; font-weight: 700; color: #1e293b;">${item.subTotal.toLocaleString()} đ</td>
+                            </tr>
+                        `;
+                    });
+
+                    itemsHtml += `
+                                </tbody>
+                            </table>
+                            
+                            <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 12px;">
+                                ${order.discountAmount > 0 || order.taxAmount > 0 ? `
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                    <div style="font-weight: 600; color: #64748b;">TẠM TÍNH</div>
+                                    <div style="font-weight: 700; color: #1e293b;">${order.subTotal.toLocaleString()} đ</div>
+                                </div>
+                                ` : ''}
+                                ${order.discountAmount > 0 ? `
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                    <div style="font-weight: 600; color: #10b981;">GIẢM GIÁ</div>
+                                    <div style="font-weight: 700; color: #10b981;">- ${order.discountAmount.toLocaleString()} đ</div>
+                                </div>
+                                ` : ''}
+                                ${order.taxAmount > 0 ? `
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                    <div style="font-weight: 600; color: #f43f5e;">VAT</div>
+                                    <div style="font-weight: 700; color: #f43f5e;">+ ${order.taxAmount.toLocaleString()} đ</div>
+                                </div>
+                                ` : ''}
+                                <div style="${order.discountAmount > 0 || order.taxAmount > 0 ? 'border-top: 1px solid #cbd5e1; padding-top: 10px; margin-top: 5px;' : ''} display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="font-weight: 600; color: #64748b;">TỔNG THANH TOÁN</div>
+                                    <div style="font-weight: 800; font-size: 1.4rem; color: #1e293b;">${order.totalAmount.toLocaleString()} đ</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    Swal.fire({
+                        title: 'CHI TIẾT ĐƠN HÀNG',
+                        html: itemsHtml,
+                        width: '500px',
+                        showCloseButton: true,
+                        showConfirmButton: false
+                    });
+                })
+                .catch(error => {
+                    Swal.fire('Lỗi', 'Không thể tải chi tiết đơn hàng!', 'error');
+                });
+        }
+
+        function reprintOrder(id) {
+            Swal.fire({
+                title: 'Đang gửi lệnh in...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
+            fetch('/order/reprint/' + id, {
+                method: 'POST',
+                headers: {
+                    [csrfHeader]: csrfToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('Thành công', data.message, 'success');
+                } else {
+                    Swal.fire('Lỗi', data.message, 'error');
+                }
+            })
+            .catch(error => {
+                Swal.fire('Lỗi', 'Không thể kết nối tới máy chủ!', 'error');
+            });
+        }
+    </script>
+    <script th:inline="javascript" th:if="${success}">
+        Swal.fire({ icon: 'success', title: 'Thành công', text: /*[[${success}]]*/ 'Success', timer: 2500, showConfirmButton: false });
+    </script>
+    <script th:inline="javascript" th:if="${error}">
+        Swal.fire({ icon: 'error', title: 'Lỗi', text: /*[[${error}]]*/ 'Error' });
+    </script>
+    <script th:inline="javascript" th:if="${warning}">
+        Swal.fire({ icon: 'warning', title: 'Lưu ý', text: /*[[${warning}]]*/ 'Warning', confirmButtonColor: '#f59e0b' });
+    </script>
+</body>
+
+</html>
